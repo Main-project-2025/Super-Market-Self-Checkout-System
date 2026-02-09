@@ -39,8 +39,8 @@ app.use('/api/analytics', analyticsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'Self-Checkout API is running',
     timestamp: new Date().toISOString()
   });
@@ -49,7 +49,7 @@ app.get('/api/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Something went wrong!',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
   });
@@ -65,7 +65,7 @@ async function startServer() {
   try {
     await initDatabase();
     console.log('✅ Database initialized successfully');
-    
+
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📱 API Base URL: http://localhost:${PORT}/api`);
