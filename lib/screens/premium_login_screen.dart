@@ -17,6 +17,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _backendUrlController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _isDarkMode = false;
@@ -27,8 +28,14 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
   @override
   void initState() {
     super.initState();
+    _loadBackendUrl();
     _checkExistingAuth();
     _setupAnimations();
+  }
+
+  Future<void> _loadBackendUrl() async {
+    final url = await ApiService.getSavedBaseUrl();
+    _backendUrlController.text = url.replaceAll('/api', '');
   }
 
   void _setupAnimations() {
@@ -55,6 +62,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _backendUrlController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -223,6 +231,18 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
             padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
             child: Column(
               children: [
+                // Settings Button Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      onPressed: _showBackendConfigDialog,
+                      icon: const Icon(Icons.settings),
+                      color: const Color(0xFF009485),
+                      tooltip: 'Backend Settings',
+                    ),
+                  ],
+                ),
                 // Logo
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -467,6 +487,99 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                   Icon(Icons.arrow_forward, size: 18),
                 ],
               ),
+      ),
+    );
+  }
+
+  Future<void> _showBackendConfigDialog() async {
+    final textColor = _isDarkMode ? Colors.white : const Color(0xFF0c1d1b);
+    final subtitleColor = _isDarkMode ? Colors.grey[400] : Colors.grey[600];
+    
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.settings, color: Color(0xFF009485)),
+            const SizedBox(width: 12),
+            Text(
+              'Backend Configuration',
+              style: TextStyle(color: textColor, fontSize: 20),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Enter the backend server URL:',
+              style: TextStyle(color: subtitleColor, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _backendUrlController,
+              style: TextStyle(color: textColor),
+              decoration: InputDecoration(
+                hintText: 'http://192.168.1.100:3000',
+                hintStyle: TextStyle(color: Colors.grey[400]),
+                prefixIcon: const Icon(Icons.cloud, color: Color(0xFF009485)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF009485)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF009485), width: 2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Current: ${ApiService.baseUrl}',
+              style: TextStyle(
+                color: subtitleColor,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Examples:\n• http://192.168.58.17:3000\n• http://localhost:3000\n• http://10.0.0.5:3000',
+              style: TextStyle(
+                color: subtitleColor,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: subtitleColor)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newUrl = _backendUrlController.text.trim();
+              if (newUrl.isNotEmpty) {
+                await ApiService.setBaseUrl(newUrl);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _showSnackBar('Backend URL updated to: ${ApiService.baseUrl}');
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF009485),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Save'),
+          ),
+        ],
       ),
     );
   }

@@ -3,17 +3,34 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Backend running in Docker - accessible from network
-  static const String baseUrl = 'http://10.99.46.17:3000/api';
-  // Alternative localhost for desktop testing: 'http://127.0.0.1:3000/api' 
+  // Default backend URL
+  static const String _defaultBaseUrl = 'http://192.168.58.17:3000/api';
+  static String _baseUrl = _defaultBaseUrl;
   static String? _token;
   static String? _userRole;
 
-  // Initialize token from storage
+  // Get current base URL
+  static String get baseUrl => _baseUrl;
+
+  // Set and save base URL
+  static Future<void> setBaseUrl(String url) async {
+    _baseUrl = url.endsWith('/api') ? url : '$url/api';
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('base_url', _baseUrl);
+  }
+
+  // Get saved base URL or return default
+  static Future<String> getSavedBaseUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('base_url') ?? _defaultBaseUrl;
+  }
+
+  // Initialize token and base URL from storage
   static Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
     _userRole = prefs.getString('user_role');
+    _baseUrl = prefs.getString('base_url') ?? _defaultBaseUrl;
   }
 
   // Get current user role
