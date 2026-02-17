@@ -3,6 +3,8 @@ import '../models/product_model.dart';
 import '../services/api_service.dart';
 import '../main.dart';
 import 'premium_login_screen.dart';
+import 'premium_scanner_screen.dart';
+import 'premium_cart_screen.dart';
 
 class PremiumHomeScreen extends StatefulWidget {
   const PremiumHomeScreen({super.key});
@@ -74,31 +76,54 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen> with SingleTicker
   void scanProduct() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => BarcodeScannerScreen(
-          onProductScanned: (product) {
-            setState(() {
-              final index = cart.indexWhere(
-                (item) => item.product.id == product.id,
-              );
-              if (index >= 0) {
-                cart[index].quantity += 1;
-              } else {
-                cart.add(CartItem(product: product, quantity: 1));
+        builder: (_) => PremiumScannerScreen(
+          cartTotal: totalPrice,
+          itemCount: cartCount,
+          onBarcodeScanned: (barcode) async {
+            // Fetch product by barcode from API
+            try {
+              final productData = await ApiService.getProductByBarcode(barcode);
+              final product = Product.fromJson(productData);
+              if (mounted) {
+                setState(() {
+                  final index = cart.indexWhere(
+                    (item) => item.product.id == product.id,
+                  );
+                  if (index >= 0) {
+                    cart[index].quantity += 1;
+                  } else {
+                    cart.add(CartItem(product: product, quantity: 1));
+                  }
+                });
+                _fetchRecommendations();
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added "${product.name}" to cart!'),
+                    duration: const Duration(seconds: 1),
+                    backgroundColor: const Color(0xFF009485),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                );
               }
-            });
-            _fetchRecommendations();
-            
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Added "${product.name}" to cart!'),
-                duration: const Duration(seconds: 1),
-                backgroundColor: const Color(0xFF009485),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Product not found: $barcode'),
+                    duration: const Duration(seconds: 2),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                );
+              }
+            }
           },
         ),
       ),
@@ -108,7 +133,7 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen> with SingleTicker
   Future<void> goToCart() async {
     final updatedCart = await Navigator.of(context).push<List<CartItem>>(
       MaterialPageRoute(
-        builder: (_) => CartScreen(cart: List<CartItem>.from(cart)),
+        builder: (_) => PremiumCartScreen(cart: List<CartItem>.from(cart)),
       ),
     );
     if (updatedCart != null) {

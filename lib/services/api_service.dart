@@ -3,9 +3,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Use computer's IP address for device access
-  static const String baseUrl = 'http://127.0.0.1:3000/api';
-  // static const String baseUrl = 'http://192.168.29.49:3000/api'; 
+  // Backend running in Docker - accessible from network
+  static const String baseUrl = 'http://10.99.46.17:3000/api';
+  // Alternative localhost for desktop testing: 'http://127.0.0.1:3000/api' 
   static String? _token;
   static String? _userRole;
 

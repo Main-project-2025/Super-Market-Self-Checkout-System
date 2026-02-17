@@ -66,10 +66,11 @@ async function startServer() {
     await initDatabase();
     console.log('✅ Database initialized successfully');
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📱 API Base URL: http://localhost:${PORT}/api`);
-      console.log(`🔍 Health Check: http://localhost:${PORT}/api/health`);
+      console.log(`📱 API Base URL: http://0.0.0.0:${PORT}/api`);
+      console.log(`🔍 Health Check: http://0.0.0.0:${PORT}/api/health`);
+      console.log(`🌐 Access from network: http://<YOUR_IP>:${PORT}/api`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

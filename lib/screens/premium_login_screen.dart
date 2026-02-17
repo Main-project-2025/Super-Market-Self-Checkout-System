@@ -124,10 +124,6 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
     );
   }
 
-  void _handleSocialLogin(String provider) {
-    _showSnackBar('$provider login coming soon!');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -191,20 +187,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 ),
               ),
             ),
-            // Dark mode toggle
-            Positioned(
-              top: 50,
-              right: 20,
-              child: IconButton(
-                icon: Icon(
-                  _isDarkMode ? Icons.light_mode : Icons.dark_mode,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  setState(() => _isDarkMode = !_isDarkMode);
-                },
-              ),
-            ),
+
           ],
         ),
       ),
@@ -256,7 +239,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 const SizedBox(height: 24),
                 // Welcome Text
                 Text(
-                  'Welcome Back',
+                  'Welcome',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
@@ -266,7 +249,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Login to start your scan-and-go experience',
+                  'Please enter your details to sign in',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
@@ -324,60 +307,6 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 const SizedBox(height: 8),
                 // Login Button
                 _buildLoginButton(),
-                const SizedBox(height: 24),
-                // Divider
-                Row(
-                  children: [
-                    Expanded(
-                      child: Divider(
-                        color: _isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'Or continue with',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Divider(
-                        color: _isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                // Social Login Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildSocialButton(
-                        label: 'Apple',
-                        onTap: () => _handleSocialLogin('Apple'),
-                        child: const Icon(Icons.apple, size: 20),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildSocialButton(
-                        label: 'Google',
-                        onTap: () => _handleSocialLogin('Google'),
-                        child: Image.asset(
-                          'assets/google_logo.png',
-                          width: 20,
-                          height: 20,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.g_mobiledata, size: 24),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -538,46 +467,6 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                   Icon(Icons.arrow_forward, size: 18),
                 ],
               ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton({
-    required String label,
-    required VoidCallback onTap,
-    required Widget child,
-  }) {
-    final buttonBgColor =
-        _isDarkMode ? const Color(0xFF122321) : Colors.white;
-    final buttonBorderColor =
-        _isDarkMode ? Colors.grey[700] : Colors.grey[300];
-    final buttonTextColor = _isDarkMode ? Colors.white : Colors.grey[800];
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: buttonBgColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: buttonBorderColor!),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            child,
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: buttonTextColor,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

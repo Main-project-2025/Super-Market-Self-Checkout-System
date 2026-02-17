@@ -1,0 +1,148 @@
+# =============================================================================
+# DOCKER COMPOSE CONFIGURATION
+# =============================================================================
+# Docker Compose makes it easy to manage multi-container applications
+# Instead of long 'docker run' commands, we define everything here
+# Then just run: docker-compose up
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# VERSION: Compose file format version
+# -----------------------------------------------------------------------------
+# Version 3.8 supports all modern features
+# Different versions have different features - 3.8 is stable and well-supported
+version: '3.8'
+
+# -----------------------------------------------------------------------------
+# SERVICES: Define the containers we want to run
+# -----------------------------------------------------------------------------
+# Each service is a container
+# You can have multiple services (backend, database, frontend, redis, etc.)
+services:
+  
+  # ---------------------------------------------------------------------------
+  # BACKEND SERVICE: Our Node.js API + Python analytics
+  # ---------------------------------------------------------------------------
+  backend:
+    
+    # BUILD CONFIGURATION
+    # Instead of using a pre-built image, we build from our Dockerfile
+    build:
+      context: .              # Build context (where to find files)
+      dockerfile: Dockerfile  # Which Dockerfile to use
+    
+    # CONTAINER NAME
+    # Give the container a friendly name instead of random name
+    container_name: supermarket-backend
+    
+    # PORT MAPPING
+    # Format: "HOST_PORT:CONTAINER_PORT"
+    # Maps port 3000 on YOUR computer to port 3000 INSIDE the container
+    # Access the API at: http://localhost:3000
+    ports:
+      - "3000:3000"
+    
+    # VOLUME MAPPING (IMPORTANT!)
+    # Format: "HOST_PATH:CONTAINER_PATH"
+    # Maps ./database on YOUR computer to /app/database INSIDE container
+    # This means database changes persist even if container is deleted!
+    volumes:
+      - ./database:/app/database
+      # You can add more volumes here:
+      # - ./logs:/app/logs          # Persist logs
+      # - ./uploads:/app/uploads    # Persist uploaded files
+    
+    # ENVIRONMENT VARIABLES
+    # Override values from config.env or add new ones
+    # You can also use a separate .env file
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # Add more as needed:
+      # - JWT_SECRET=${JWT_SECRET}  # Read from .env file
+      # - DATABASE_PATH=/app/database/checkout.db
+    
+    # ALTERNATIVE: Load from .env file
+    # env_file:
+    #   - config.env
+    
+    # RESTART POLICY
+    # What to do if container stops/crashes?
+    # - no: Don't restart (default)
+    # - always: Always restart
+    # - on-failure: Restart only if exits with error
+    # - unless-stopped: Restart unless you manually stop it
+    restart: unless-stopped
+    
+    # HEALTH CHECK
+    # Docker periodically checks if container is healthy
+    # If unhealthy, it can restart the container
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s    # Check every 30 seconds
+      timeout: 10s     # Wait max 10 seconds for response
+      retries: 3       # Mark unhealthy after 3 failed attempts
+      start_period: 40s # Give container 40s to start before checking
+    
+    # DEPENDENCIES (if you add more services later)
+    # Example: If you add a separate database service:
+    # depends_on:
+    #   - database
+    # This ensures database starts before backend
+    
+    # NETWORKS (advanced - for multi-container communication)
+    # networks:
+    #   - backend-network
+
+# -----------------------------------------------------------------------------
+# VOLUMES (Optional - Named Volumes)
+# -----------------------------------------------------------------------------
+# We're using bind mounts (./database:/app/database) above
+# But you can also use named volumes for better portability:
+# volumes:
+#   database-data:
+#     driver: local
+#
+# Then in service:
+#   volumes:
+#     - database-data:/app/database
+
+# -----------------------------------------------------------------------------
+# NETWORKS (Optional - Custom Networks)
+# -----------------------------------------------------------------------------
+# By default, Docker Compose creates a network for your services
+# You can define custom networks if needed:
+# networks:
+#   backend-network:
+#     driver: bridge
+
+# =============================================================================
+# COMMON COMMANDS:
+#
+# Start all services (build if needed):
+#   docker-compose up
+#
+# Start in background (detached):
+#   docker-compose up -d
+#
+# Rebuild and start:
+#   docker-compose up --build
+#
+# Stop all services:
+#   docker-compose down
+#
+# View logs:
+#   docker-compose logs
+#   docker-compose logs -f           # Follow logs (live)
+#   docker-compose logs backend      # Logs for specific service
+#
+# Execute command in running container:
+#   docker-compose exec backend sh   # Open shell
+#   docker-compose exec backend npm run init-db  # Run command
+#
+# View running services:
+#   docker-compose ps
+#
+# Remove everything (containers, networks, volumes):
+#   docker-compose down -v
+# =============================================================================

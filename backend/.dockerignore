@@ -1,0 +1,89 @@
+# =============================================================================
+# .dockerignore - Tells Docker which files to EXCLUDE when building image
+# =============================================================================
+# Works like .gitignore but for Docker builds
+# Why? Smaller build context = faster builds, smaller images
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# NODE.JS FILES
+# -----------------------------------------------------------------------------
+# Don't copy node_modules - we'll install fresh inside container
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# -----------------------------------------------------------------------------
+# PYTHON FILES
+# -----------------------------------------------------------------------------
+# Don't copy Python virtual environment - we install packages in Dockerfile
+analytics/venv/
+analytics/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+
+# Don't copy these large data files - they can be regenerated
+analytics/*.csv
+analytics/*.png
+analytics/*.json
+
+# -----------------------------------------------------------------------------
+# GIT FILES
+# -----------------------------------------------------------------------------
+.git/
+.gitignore
+.gitattributes
+
+# -----------------------------------------------------------------------------
+# DOCKER FILES (don't need Docker files inside Docker!)
+# -----------------------------------------------------------------------------
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# -----------------------------------------------------------------------------
+# DOCUMENTATION & CONFIG
+# -----------------------------------------------------------------------------
+*.md
+README.md
+DOCKER_LEARNING_GUIDE.md
+.env.example
+
+# -----------------------------------------------------------------------------
+# IDE & EDITOR FILES
+# -----------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# -----------------------------------------------------------------------------
+# LOGS & TEMPORARY FILES
+# -----------------------------------------------------------------------------
+logs/
+*.log
+tmp/
+temp/
+.tmp/
+
+# -----------------------------------------------------------------------------
+# TEST FILES (we don't need tests in production image)
+# -----------------------------------------------------------------------------
+test/
+tests/
+*.test.js
+*.spec.js
+
+# =============================================================================
+# LEARNING NOTE:
+# A smaller build context means:
+# - Faster builds (less to copy to Docker daemon)
+# - Smaller images (less junk)
+# - More secure (no secrets accidentally copied)
+# =============================================================================

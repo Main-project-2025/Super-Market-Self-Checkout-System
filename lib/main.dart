@@ -7,6 +7,7 @@ import 'services/api_service.dart';
 import 'models/product_model.dart';
 import 'screens/premium_login_screen.dart';
 import 'screens/premium_home_screen.dart';
+import 'screens/premium_cart_screen.dart';
 
 // CartItem model
 class CartItem {
@@ -65,155 +66,9 @@ class SelfCheckoutApp extends StatelessWidget {
 // located in lib/screens/premium_home_screen.dart
 
 // ============== CART SCREEN ==============
-class CartScreen extends StatefulWidget {
-  final List<CartItem> cart;
-
-  const CartScreen({super.key, required this.cart});
-
-  @override
-  State<CartScreen> createState() => _CartScreenState();
-}
-
-class _CartScreenState extends State<CartScreen> {
-  late List<CartItem> cart;
-
-  @override
-  void initState() {
-    super.initState();
-    cart = widget.cart;
-  }
-
-  double get totalPrice =>
-      cart.fold(0, (sum, item) => sum + item.product.price * item.quantity);
-
-  void increaseQty(int index) {
-    setState(() {
-      cart[index].quantity += 1;
-    });
-  }
-
-  void decreaseQty(int index) {
-    setState(() {
-      cart[index].quantity -= 1;
-      if (cart[index].quantity <= 0) {
-        cart.removeAt(index);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Your Cart')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: cart.isEmpty
-            ? Center(
-                child: Text(
-                  'Your cart is empty.',
-                  style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                ),
-              )
-            : Column(
-                children: [
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: cart.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = cart[index];
-                        return Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                          child: ListTile(
-                            title: Text(
-                              item.product.name,
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            subtitle: Text(
-                              '\$${item.product.price.toStringAsFixed(2)}',
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.remove_circle_outline,
-                                    color: Colors.teal,
-                                  ),
-                                  onPressed: () => decreaseQty(index),
-                                ),
-                                Text(
-                                  '${item.quantity}',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.add_circle_outline,
-                                    color: Colors.teal,
-                                  ),
-                                  onPressed: () => increaseQty(index),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total:',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        '\$${totalPrice.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text(
-                        'Back to Shopping',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).pop(cart);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
+// ============== OLD CART SCREEN REMOVED ==============
+// The old CartScreen has been replaced with PremiumCartScreen
+// located in lib/screens/premium_cart_screen.dart
 
 // ============== CHECKOUT SCREEN ==============
 class CheckoutScreen extends StatefulWidget {
