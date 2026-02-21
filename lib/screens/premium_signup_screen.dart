@@ -1,26 +1,28 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import '../main.dart';
-import 'premium_home_screen.dart';
-import 'premium_signup_screen.dart';
+import 'premium_login_screen.dart';
 
-/// Premium Login Screen with modern design aesthetics
-/// Features: Glassmorphism, vibrant gradients, social login, dark mode support
-class PremiumLoginScreen extends StatefulWidget {
-  const PremiumLoginScreen({super.key});
+/// Premium Sign-Up Screen with modern design aesthetics
+/// Features: Glassmorphism, vibrant gradients, form validation
+class PremiumSignupScreen extends StatefulWidget {
+  const PremiumSignupScreen({super.key});
 
   @override
-  State<PremiumLoginScreen> createState() => _PremiumLoginScreenState();
+  State<PremiumSignupScreen> createState() => _PremiumSignupScreenState();
 }
 
-class _PremiumLoginScreenState extends State<PremiumLoginScreen>
+class _PremiumSignupScreenState extends State<PremiumSignupScreen>
     with SingleTickerProviderStateMixin {
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _backendUrlController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool _isDarkMode = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -29,14 +31,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
   @override
   void initState() {
     super.initState();
-    _loadBackendUrl();
-    _checkExistingAuth();
     _setupAnimations();
-  }
-
-  Future<void> _loadBackendUrl() async {
-    final url = await ApiService.getSavedBaseUrl();
-    _backendUrlController.text = url.replaceAll('/api', '');
   }
 
   void _setupAnimations() {
@@ -62,59 +57,80 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
 
   @override
   void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _backendUrlController.dispose();
+    _confirmPasswordController.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
-  Future<void> _checkExistingAuth() async {
-    try {
-      await ApiService.initialize();
-      final result = await ApiService.verifyToken();
-      if (result['valid'] == true && mounted) {
-        _navigateBasedOnRole();
-      }
-    } catch (e) {
-      // User not logged in, continue to login screen
-    }
+  bool _validateEmail(String email) {
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    return emailRegex.hasMatch(email);
   }
 
-  void _navigateBasedOnRole() {
-    // Navigate to appropriate screen based on user role
-    if (ApiService.isAdmin) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-      );
-    } else {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => PremiumHomeScreen()));
+  String? _validateForm() {
+    if (_firstNameController.text.trim().isEmpty) {
+      return 'Please enter your first name';
     }
+    if (_lastNameController.text.trim().isEmpty) {
+      return 'Please enter your last name';
+    }
+    if (_emailController.text.trim().isEmpty) {
+      return 'Please enter your email';
+    }
+    if (!_validateEmail(_emailController.text.trim())) {
+      return 'Please enter a valid email address';
+    }
+    if (_passwordController.text.isEmpty) {
+      return 'Please enter a password';
+    }
+    if (_passwordController.text.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+    if (_confirmPasswordController.text.isEmpty) {
+      return 'Please confirm your password';
+    }
+    if (_passwordController.text != _confirmPasswordController.text) {
+      return 'Passwords do not match';
+    }
+    return null;
   }
 
-  Future<void> _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showSnackBar('Please enter email and password', isError: true);
+  Future<void> _handleSignup() async {
+    final validationError = _validateForm();
+    if (validationError != null) {
+      _showSnackBar(validationError, isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      await ApiService.login(
+      final fullName =
+          '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}';
+
+      await ApiService.register(
         email: _emailController.text.trim(),
         password: _passwordController.text,
+        name: fullName,
       );
 
+      // Clear the token so user must login manually
+      await ApiService.clearToken();
+
       if (mounted) {
-        _showSnackBar('Login successful!');
-        _navigateBasedOnRole();
+        _showSnackBar('Account created successfully! Please login.');
+        // Navigate back to login screen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const PremiumLoginScreen()),
+        );
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('Login failed: ${e.toString()}', isError: true);
+        _showSnackBar('Sign up failed: ${e.toString()}', isError: true);
       }
     } finally {
       if (mounted) {
@@ -191,7 +207,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                     opacity: _fadeAnimation,
                     child: SlideTransition(
                       position: _slideAnimation,
-                      child: _buildLoginCard(),
+                      child: _buildSignupCard(),
                     ),
                   ),
                 ),
@@ -203,7 +219,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
     );
   }
 
-  Widget _buildLoginCard() {
+  Widget _buildSignupCard() {
     final cardColor = _isDarkMode ? const Color(0xFF1a2c2a) : Colors.white;
     final textColor = _isDarkMode ? Colors.white : const Color(0xFF0c1d1b);
     final subtitleColor = _isDarkMode ? Colors.grey[400] : Colors.grey[600];
@@ -232,15 +248,15 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
             padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
             child: Column(
               children: [
-                // Settings Button Row
+                // Back Button Row
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     IconButton(
-                      onPressed: _showBackendConfigDialog,
-                      icon: const Icon(Icons.settings),
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back),
                       color: const Color(0xFF009485),
-                      tooltip: 'Backend Settings',
+                      tooltip: 'Back to Login',
                     ),
                   ],
                 ),
@@ -252,7 +268,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.shopping_cart_checkout,
+                    Icons.person_add,
                     size: 40,
                     color: Color(0xFF009485),
                   ),
@@ -260,7 +276,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 const SizedBox(height: 24),
                 // Welcome Text
                 Text(
-                  'Welcome',
+                  'Create Account',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
@@ -270,7 +286,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Please enter your details to sign in',
+                  'Sign up to get started',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
@@ -286,6 +302,28 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
             padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
             child: Column(
               children: [
+                // First Name Input
+                _buildInputField(
+                  controller: _firstNameController,
+                  label: 'First Name',
+                  hint: 'John',
+                  icon: Icons.person_outline,
+                  inputBgColor: inputBgColor,
+                  textColor: textColor,
+                  labelColor: subtitleColor,
+                ),
+                const SizedBox(height: 20),
+                // Last Name Input
+                _buildInputField(
+                  controller: _lastNameController,
+                  label: 'Last Name',
+                  hint: 'Doe',
+                  icon: Icons.person_outline,
+                  inputBgColor: inputBgColor,
+                  textColor: textColor,
+                  labelColor: subtitleColor,
+                ),
+                const SizedBox(height: 20),
                 // Email Input
                 _buildInputField(
                   controller: _emailController,
@@ -295,6 +333,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                   inputBgColor: inputBgColor,
                   textColor: textColor,
                   labelColor: subtitleColor,
+                  keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 20),
                 // Password Input
@@ -307,27 +346,32 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                   textColor: textColor,
                   labelColor: subtitleColor,
                   isPassword: true,
+                  obscureText: _obscurePassword,
+                  onToggleVisibility: () {
+                    setState(() => _obscurePassword = !_obscurePassword);
+                  },
                 ),
-                // Forgot Password
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      _showSnackBar('Forgot password coming soon!');
-                    },
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF009485),
-                      ),
-                    ),
-                  ),
+                const SizedBox(height: 20),
+                // Confirm Password Input
+                _buildInputField(
+                  controller: _confirmPasswordController,
+                  label: 'Confirm Password',
+                  hint: '••••••••',
+                  icon: Icons.lock_outline,
+                  inputBgColor: inputBgColor,
+                  textColor: textColor,
+                  labelColor: subtitleColor,
+                  isPassword: true,
+                  obscureText: _obscureConfirmPassword,
+                  onToggleVisibility: () {
+                    setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                    );
+                  },
                 ),
-                const SizedBox(height: 8),
-                // Login Button
-                _buildLoginButton(),
+                const SizedBox(height: 32),
+                // Sign Up Button
+                _buildSignupButton(),
               ],
             ),
           ),
@@ -352,20 +396,15 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Don't have an account? ",
+                  'Already have an account? ',
                   style: TextStyle(fontSize: 13, color: subtitleColor),
                 ),
                 GestureDetector(
                   onTap: () {
-                    // Navigate to sign up screen
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PremiumSignupScreen(),
-                      ),
-                    );
+                    Navigator.of(context).pop();
                   },
                   child: const Text(
-                    'Sign Up',
+                    'Login',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -390,6 +429,9 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
     required Color textColor,
     required Color? labelColor,
     bool isPassword = false,
+    bool obscureText = false,
+    VoidCallback? onToggleVisibility,
+    TextInputType? keyboardType,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,7 +461,8 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
           ),
           child: TextField(
             controller: controller,
-            obscureText: isPassword && _obscurePassword,
+            obscureText: isPassword && obscureText,
+            keyboardType: keyboardType,
             style: TextStyle(color: textColor, fontSize: 15),
             decoration: InputDecoration(
               hintText: hint,
@@ -428,15 +471,13 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
               suffixIcon: isPassword
                   ? IconButton(
                       icon: Icon(
-                        _obscurePassword
+                        obscureText
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
                         color: Colors.grey[400],
                         size: 20,
                       ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
+                      onPressed: onToggleVisibility,
                     )
                   : null,
               border: InputBorder.none,
@@ -451,12 +492,12 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
     );
   }
 
-  Widget _buildLoginButton() {
+  Widget _buildSignupButton() {
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleLogin,
+        onPressed: _isLoading ? null : _handleSignup,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF009485),
           foregroundColor: Colors.white,
@@ -479,108 +520,13 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: const [
                   Text(
-                    'Login',
+                    'Sign Up',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                   SizedBox(width: 8),
                   Icon(Icons.arrow_forward, size: 18),
                 ],
               ),
-      ),
-    );
-  }
-
-  Future<void> _showBackendConfigDialog() async {
-    final textColor = _isDarkMode ? Colors.white : const Color(0xFF0c1d1b);
-    final subtitleColor = _isDarkMode ? Colors.grey[400] : Colors.grey[600];
-
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.settings, color: Color(0xFF009485)),
-            const SizedBox(width: 12),
-            Text(
-              'Backend Configuration',
-              style: TextStyle(color: textColor, fontSize: 20),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Enter the backend server URL:',
-              style: TextStyle(color: subtitleColor, fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _backendUrlController,
-              style: TextStyle(color: textColor),
-              decoration: InputDecoration(
-                hintText: 'http://192.168.1.100:3000',
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                prefixIcon: const Icon(Icons.cloud, color: Color(0xFF009485)),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF009485)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF009485),
-                    width: 2,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Current: ${ApiService.baseUrl}',
-              style: TextStyle(
-                color: subtitleColor,
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Examples:\n• http://192.168.58.17:3000\n• http://localhost:3000\n• http://10.0.0.5:3000',
-              style: TextStyle(color: subtitleColor, fontSize: 11),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: subtitleColor)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final newUrl = _backendUrlController.text.trim();
-              if (newUrl.isNotEmpty) {
-                await ApiService.setBaseUrl(newUrl);
-                if (mounted) {
-                  Navigator.pop(context);
-                  _showSnackBar(
-                    'Backend URL updated to: ${ApiService.baseUrl}',
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF009485),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
   }

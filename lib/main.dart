@@ -8,6 +8,7 @@ import 'models/product_model.dart';
 import 'screens/premium_login_screen.dart';
 import 'screens/premium_home_screen.dart';
 import 'screens/premium_cart_screen.dart';
+import 'data/mock_data.dart';
 
 // CartItem model
 class CartItem {
@@ -17,24 +18,10 @@ class CartItem {
   CartItem({required this.product, required this.quantity});
 }
 
-// ============== MOCK DATA ==============
-const List<Product> mockProducts = [
-  Product(id: '1', name: 'Fresh Milk', price: 1.50, barcode: '111111'),
-  Product(id: '2', name: 'Brown Bread', price: 2.20, barcode: '222222'),
-  Product(id: '3', name: 'Organic Eggs (12)', price: 4.50, barcode: '333333'),
-  Product(id: '4', name: 'Avocado', price: 1.80, barcode: '444444'),
-  Product(id: '5', name: 'Chicken Breast', price: 8.99, barcode: '555555'),
-  Product(id: '6', name: 'Cheddar Cheese', price: 5.40, barcode: '666666'),
-];
-
-const List<Product> mockRecommendations = [
-  Product(id: '7', name: 'Greek Yogurt', price: 3.25, barcode: '777777'),
-  Product(id: '8', name: 'Almond Milk', price: 2.99, barcode: '888888'),
-  Product(id: '9', name: 'Whole Wheat Pasta', price: 1.75, barcode: '999999'),
-];
-
 // ============== MAIN APP ==============
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ApiService.initialize();
   runApp(SelfCheckoutApp());
 }
 
@@ -54,7 +41,6 @@ class SelfCheckoutApp extends StatelessWidget {
     );
   }
 }
-
 
 // ============== OLD AUTHENTICATION SCREENS REMOVED ==============
 // The old LoginScreen and RegistrationScreen have been replaced with PremiumLoginScreen
@@ -216,9 +202,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 onPressed: () {
-                  widget.onFinish();
+                  // Navigate first so we don't call onFinish on a disposed widget (e.g. when coming from Cart).
+                  // New dashboard has empty cart; purchase is already logged via createTransaction.
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => PremiumHomeScreen()),
+                    MaterialPageRoute(builder: (_) => const PremiumHomeScreen()),
                     (route) => false,
                   );
                 },
@@ -588,7 +575,8 @@ class AdminDashboardScreen extends StatelessWidget {
                         context,
                         icon: Icons.inventory,
                         title: 'Product\nManagement',
-                        description: 'Manage products and inventory (Coming Soon)',
+                        description:
+                            'Manage products and inventory (Coming Soon)',
                         color: Colors.purple,
                         onTap: () {
                           Navigator.of(context).push(
@@ -619,9 +607,7 @@ class AdminDashboardScreen extends StatelessWidget {
   }) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -636,11 +622,7 @@ class AdminDashboardScreen extends StatelessWidget {
                   color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  size: 40,
-                  color: color,
-                ),
+                child: Icon(icon, size: 40, color: color),
               ),
               const SizedBox(height: 12),
               Text(
@@ -655,10 +637,7 @@ class AdminDashboardScreen extends StatelessWidget {
               Text(
                 description,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -675,10 +654,12 @@ class CustomerSegmentationScreen extends StatefulWidget {
   const CustomerSegmentationScreen({super.key});
 
   @override
-  State<CustomerSegmentationScreen> createState() => _CustomerSegmentationScreenState();
+  State<CustomerSegmentationScreen> createState() =>
+      _CustomerSegmentationScreenState();
 }
 
-class _CustomerSegmentationScreenState extends State<CustomerSegmentationScreen> {
+class _CustomerSegmentationScreenState
+    extends State<CustomerSegmentationScreen> {
   Map<String, dynamic>? segmentationData;
   Map<String, dynamic>? statisticsData;
   bool isLoading = true;
@@ -733,50 +714,50 @@ class _CustomerSegmentationScreenState extends State<CustomerSegmentationScreen>
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline, size: 64, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error loading data',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _loadData,
-                        child: const Text('Retry'),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading data',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Statistics Summary
-                        if (statisticsData != null) _buildStatisticsCard(),
-                        const SizedBox(height: 16),
-                        // Segmentation Results
-                        if (segmentationData != null) _buildSegmentationResults(),
-                      ],
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[600]),
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _loadData,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Statistics Summary
+                    if (statisticsData != null) _buildStatisticsCard(),
+                    const SizedBox(height: 16),
+                    // Segmentation Results
+                    if (segmentationData != null) _buildSegmentationResults(),
+                  ],
                 ),
+              ),
+            ),
     );
   }
 
@@ -801,9 +782,18 @@ class _CustomerSegmentationScreenState extends State<CustomerSegmentationScreen>
               ],
             ),
             const SizedBox(height: 16),
-            _buildStatRow('Total Customers', '${stats['total_customers'] ?? 0}'),
-            _buildStatRow('Active Customers', '${stats['active_customers'] ?? 0}'),
-            _buildStatRow('Total Transactions', '${stats['total_transactions'] ?? 0}'),
+            _buildStatRow(
+              'Total Customers',
+              '${stats['total_customers'] ?? 0}',
+            ),
+            _buildStatRow(
+              'Active Customers',
+              '${stats['active_customers'] ?? 0}',
+            ),
+            _buildStatRow(
+              'Total Transactions',
+              '${stats['total_transactions'] ?? 0}',
+            ),
             _buildStatRow(
               'Total Revenue',
               '\$${(stats['total_revenue'] ?? 0).toStringAsFixed(2)}',
@@ -829,13 +819,7 @@ class _CustomerSegmentationScreenState extends State<CustomerSegmentationScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[700],
-            ),
-          ),
+          Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[700])),
           Text(
             value,
             style: TextStyle(
@@ -891,7 +875,9 @@ class _CustomerSegmentationScreenState extends State<CustomerSegmentationScreen>
           const SizedBox(height: 16),
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -903,7 +889,10 @@ class _CustomerSegmentationScreenState extends State<CustomerSegmentationScreen>
                       const SizedBox(width: 8),
                       const Text(
                         'Summary',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -1000,9 +989,18 @@ class _CustomerSegmentationScreenState extends State<CustomerSegmentationScreen>
               ],
             ),
             const SizedBox(height: 16),
-            _buildStatRow('Avg Total Purchase', '\$${avgPurchase.toStringAsFixed(2)}'),
-            _buildStatRow('Purchase Range', '\$${minPurchase.toStringAsFixed(2)} - \$${maxPurchase.toStringAsFixed(2)}'),
-            _buildStatRow('Avg Transactions', avgTransactions.toStringAsFixed(1)),
+            _buildStatRow(
+              'Avg Total Purchase',
+              '\$${avgPurchase.toStringAsFixed(2)}',
+            ),
+            _buildStatRow(
+              'Purchase Range',
+              '\$${minPurchase.toStringAsFixed(2)} - \$${maxPurchase.toStringAsFixed(2)}',
+            ),
+            _buildStatRow(
+              'Avg Transactions',
+              avgTransactions.toStringAsFixed(1),
+            ),
             if (clusterData['avg_transaction_amount'] != null)
               _buildStatRow(
                 'Avg Transaction Amount',
@@ -1020,7 +1018,8 @@ class ProductManagementScreen extends StatefulWidget {
   const ProductManagementScreen({super.key});
 
   @override
-  State<ProductManagementScreen> createState() => _ProductManagementScreenState();
+  State<ProductManagementScreen> createState() =>
+      _ProductManagementScreenState();
 }
 
 class _ProductManagementScreenState extends State<ProductManagementScreen> {
@@ -1044,7 +1043,10 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
       if (mounted) {
         setState(() => isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load products: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to load products: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -1072,13 +1074,19 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                       backgroundColor: Colors.teal.withOpacity(0.1),
                       child: Text(product['name'][0].toUpperCase()),
                     ),
-                    title: Text(product['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Price: \$${product['price']} | Stock: ${product['stock_quantity'] ?? 0}'),
+                    title: Text(
+                      product['name'],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      'Price: \$${product['price']} | Stock: ${product['stock_quantity'] ?? 0}',
+                    ),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => AdminProductDetailScreen(product: product),
+                          builder: (_) =>
+                              AdminProductDetailScreen(product: product),
                         ),
                       );
                     },
@@ -1096,7 +1104,8 @@ class AdminProductDetailScreen extends StatefulWidget {
   const AdminProductDetailScreen({super.key, required this.product});
 
   @override
-  State<AdminProductDetailScreen> createState() => _AdminProductDetailScreenState();
+  State<AdminProductDetailScreen> createState() =>
+      _AdminProductDetailScreenState();
 }
 
 class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
@@ -1111,7 +1120,9 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
     });
 
     try {
-      final result = await ApiService.getPricingSuggestion(widget.product['id']);
+      final result = await ApiService.getPricingSuggestion(
+        widget.product['id'],
+      );
       if (result['success'] == true) {
         setState(() {
           pricingSuggestion = result['data'];
@@ -1180,7 +1191,10 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(color: Colors.grey[600])),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
         ],
       ),
     );
@@ -1198,7 +1212,10 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('AI Suggested Price', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'AI Suggested Price',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 if (!isLoadingSuggestion && pricingSuggestion == null)
                   ElevatedButton(
                     onPressed: _fetchPricingSuggestion,
@@ -1207,20 +1224,36 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
               ],
             ),
             if (isLoadingSuggestion)
-              const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
             if (errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 16),
-                child: Text('Error: $errorMessage', style: const TextStyle(color: Colors.red)),
+                child: Text(
+                  'Error: $errorMessage',
+                  style: const TextStyle(color: Colors.red),
+                ),
               ),
             if (pricingSuggestion != null) ...[
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _priceBox('Current', pricingSuggestion!['current_price'], Colors.grey),
+                  _priceBox(
+                    'Current',
+                    pricingSuggestion!['current_price'],
+                    Colors.grey,
+                  ),
                   const Icon(Icons.arrow_forward, color: Colors.teal),
-                  _priceBox('Suggested', pricingSuggestion!['suggested_price'], Colors.green),
+                  _priceBox(
+                    'Suggested',
+                    pricingSuggestion!['suggested_price'],
+                    Colors.green,
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -1233,58 +1266,76 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
               const SizedBox(height: 8),
               Text(
                 'Confidence Score: ${((pricingSuggestion!['confidence'] ?? 0) * 100).toStringAsFixed(1)}%',
-                style: TextStyle(color: Colors.grey[600], fontStyle: FontStyle.italic),
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
               ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: () async {
-                      if (pricingSuggestion == null) return;
-                      
-                      try {
-                        // Confirm dialog
-                        final confirm = await showDialog<bool>(
-                          context: context,
-                          builder: (cntx) => AlertDialog(
-                            title: const Text('Update Price?'),
-                            content: Text(
-                              'This will update the product price to \\\$${pricingSuggestion!['suggested_price'].toStringAsFixed(2)}.\\nAre you sure?'
+                    if (pricingSuggestion == null) return;
+
+                    try {
+                      // Confirm dialog
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (cntx) => AlertDialog(
+                          title: const Text('Update Price?'),
+                          content: Text(
+                            'This will update the product price to \\\$${pricingSuggestion!['suggested_price'].toStringAsFixed(2)}.\\nAre you sure?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(cntx, false),
+                              child: const Text('Cancel'),
                             ),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(cntx, false), child: const Text('Cancel')),
-                              TextButton(onPressed: () => Navigator.pop(cntx, true), child: const Text('Update')),
-                            ],
-                          )
+                            TextButton(
+                              onPressed: () => Navigator.pop(cntx, true),
+                              child: const Text('Update'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirm == true) {
+                        final result = await ApiService.applyPricingSuggestion(
+                          widget.product['id'],
                         );
-                        
-                        if (confirm == true) {
-                           final result = await ApiService.applyPricingSuggestion(widget.product['id']);
-                           if (result['success'] == true && mounted) {
-                             ScaffoldMessenger.of(context).showSnackBar(
-                               const SnackBar(content: Text('Price updated successfully!'), backgroundColor: Colors.green)
-                             );
-                             // Refresh data
-                             setState(() {
-                               pricingSuggestion!['current_price'] = result['new_price'];
-                               // Update widget.product['price'] locally so "Info Card" updates too purely for display
-                               widget.product['price'] = result['new_price'];
-                             });
-                           }
-                        }
-                      } catch (e) {
-                        if (mounted) {
+                        if (result['success'] == true && mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to update price: \$e'), backgroundColor: Colors.red)
+                            const SnackBar(
+                              content: Text('Price updated successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
                           );
+                          // Refresh data
+                          setState(() {
+                            pricingSuggestion!['current_price'] =
+                                result['new_price'];
+                            // Update widget.product['price'] locally so "Info Card" updates too purely for display
+                            widget.product['price'] = result['new_price'];
+                          });
                         }
                       }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to update price: \$e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   },
                   icon: const Icon(Icons.check),
                   label: const Text("Apply Suggestion"),
                   style: FilledButton.styleFrom(backgroundColor: Colors.teal),
                 ),
-              )
+              ),
             ],
           ],
         ),
@@ -1299,12 +1350,17 @@ class _AdminProductDetailScreenState extends State<AdminProductDetailScreen> {
         const SizedBox(height: 4),
         Text(
           '\$${price?.toStringAsFixed(2) ?? "N/A"}',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
       ],
     );
   }
 }
+
 // ============== LOW STOCK ALERTS SCREEN ==============
 class LowStockAlertsScreen extends StatefulWidget {
   const LowStockAlertsScreen({super.key});
@@ -1365,186 +1421,187 @@ class _LowStockAlertsScreenState extends State<LowStockAlertsScreen> {
           ),
         ),
         child: isLoading
-            ? const Center(child: CircularProgressIndicator(color: Colors.white))
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
             : errorMessage != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error_outline, size: 48, color: Colors.white),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Error loading alerts',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            errorMessage!,
-                            style: TextStyle(color: Colors.white70),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: _loadAlerts,
-                            child: const Text('Retry'),
-                          ),
-                        ],
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.white),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Error loading alerts',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        errorMessage!,
+                        style: TextStyle(color: Colors.white70),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: _loadAlerts,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : alerts.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 64,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Inventory is Healthy',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  )
-                : alerts.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.check_circle_outline,
-                              size: 64,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Inventory is Healthy',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'No low stock items detected.',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: alerts.length,
-                        itemBuilder: (context, index) {
-                          final alert = alerts[index];
-                          final isCritical = (alert['days_until_stockout'] != 'N/A' &&
-                                  alert['days_until_stockout'] < 3) ||
-                              alert['current_stock'] == 0;
+                    const SizedBox(height: 8),
+                    Text(
+                      'No low stock items detected.',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: alerts.length,
+                itemBuilder: (context, index) {
+                  final alert = alerts[index];
+                  final isCritical =
+                      (alert['days_until_stockout'] != 'N/A' &&
+                          alert['days_until_stockout'] < 3) ||
+                      alert['current_stock'] == 0;
 
-                          return Card(
-                            elevation: 4,
-                            margin: const EdgeInsets.only(bottom: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: isCritical
-                                              ? Colors.red.withOpacity(0.1)
-                                              : Colors.orange.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Icon(
-                                          Icons.warning_amber_rounded,
-                                          color: isCritical
-                                              ? Colors.red
-                                              : Colors.orange,
-                                        ),
+                  return Card(
+                    elevation: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isCritical
+                                      ? Colors.red.withOpacity(0.1)
+                                      : Colors.orange.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: isCritical
+                                      ? Colors.red
+                                      : Colors.orange,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      alert['product_name'] ?? 'Unknown',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              alert['product_name'] ?? 'Unknown',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            Text(
-                                              'ID: ${alert['product_id']}',
-                                              style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      _buildInfoItem(
-                                        'Current Stock',
-                                        '${alert['current_stock']}',
-                                        Colors.black87,
-                                      ),
-                                      _buildInfoItem(
-                                        'Daily Sales',
-                                        '${alert['daily_velocity']}',
-                                        Colors.black87,
-                                      ),
-                                      _buildInfoItem(
-                                        'Days Left',
-                                        '${alert['days_until_stockout']}',
-                                        isCritical ? Colors.red : Colors.orange,
-                                      ),
-                                    ],
-                                  ),
-                                  if (alert['reason'] != null &&
-                                      (alert['reason'] as List).isNotEmpty) ...[
-                                    const SizedBox(height: 12),
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[100],
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.info_outline,
-                                            size: 16,
-                                            color: Colors.grey[600],
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              (alert['reason'] as List).join(', '),
-                                              style: TextStyle(
-                                                color: Colors.grey[800],
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                    ),
+                                    Text(
+                                      'ID: ${alert['product_id']}',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
                                       ),
                                     ),
                                   ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildInfoItem(
+                                'Current Stock',
+                                '${alert['current_stock']}',
+                                Colors.black87,
+                              ),
+                              _buildInfoItem(
+                                'Daily Sales',
+                                '${alert['daily_velocity']}',
+                                Colors.black87,
+                              ),
+                              _buildInfoItem(
+                                'Days Left',
+                                '${alert['days_until_stockout']}',
+                                isCritical ? Colors.red : Colors.orange,
+                              ),
+                            ],
+                          ),
+                          if (alert['reason'] != null &&
+                              (alert['reason'] as List).isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 16,
+                                    color: Colors.grey[600],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      (alert['reason'] as List).join(', '),
+                                      style: TextStyle(
+                                        color: Colors.grey[800],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                          );
-                        },
+                          ],
+                        ],
                       ),
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }
@@ -1553,13 +1610,7 @@ class _LowStockAlertsScreenState extends State<LowStockAlertsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-          ),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
         const SizedBox(height: 4),
         Text(
           value,

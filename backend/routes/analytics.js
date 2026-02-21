@@ -395,6 +395,13 @@ router.get('/low-stock', authenticateToken, requireAdmin, (req, res) => {
 
 // Product Recommendations endpoint
 router.get('/recommendations', authenticateToken, (req, res) => {
+  // Support both JWT payload keys (userId from login/register, id from some clients)
+  const userId = req.user.userId ?? req.user.id;
+  if (userId === undefined || userId === null) {
+    return res.status(401).json({ success: false, error: 'User ID missing from token' });
+  }
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
   // Get Python script path
   const scriptPath = path.join(__dirname, '..', 'analytics', 'recommendations.py');
 
@@ -405,11 +412,10 @@ router.get('/recommendations', authenticateToken, (req, res) => {
     DATABASE_PATH: dbPath
   };
 
-  const userId = req.user.userId;
   const currentItems = req.query.current_items || '';
+  const limit = Math.min(parseInt(req.query.limit, 10) || 10, 20);
 
-  // Execute Python script
-  let command = `python3 "${scriptPath}" --user_id "${userId}"`;
+  let command = `python3 "${scriptPath}" --user_id "${userId}" --limit ${limit}`;
   if (currentItems) {
     command += ` --current_items "${currentItems}"`;
   }

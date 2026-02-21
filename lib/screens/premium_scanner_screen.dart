@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'dart:ui';
+import '../services/api_service.dart';
+import '../models/product_model.dart';
 
 class PremiumScannerScreen extends StatefulWidget {
   final double cartTotal;
@@ -25,6 +27,11 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
   bool _showSuccessNotification = false;
   String? _lastScannedProduct;
   String? _lastScannedPrice;
+  String? _lastScannedImage;
+
+  // Local state for cart summary
+  late double _currentCartTotal;
+  late int _currentItemCount;
 
   late AnimationController _laserController;
   late Animation<double> _laserAnimation;
@@ -36,6 +43,9 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
       detectionSpeed: DetectionSpeed.noDuplicates,
     );
 
+    _currentCartTotal = widget.cartTotal;
+    _currentItemCount = widget.itemCount;
+
     // Laser scan animation
     _laserController = AnimationController(
       vsync: this,
@@ -43,10 +53,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
     )..repeat();
 
     _laserAnimation = Tween<double>(begin: 0.1, end: 0.9).animate(
-      CurvedAnimation(
-        parent: _laserController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _laserController, curve: Curves.easeInOut),
     );
   }
 
@@ -64,26 +71,58 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
     cameraController.toggleTorch();
   }
 
-  void _handleBarcode(BarcodeCapture capture) {
+  void _handleBarcode(BarcodeCapture capture) async {
     final barcode = capture.barcodes.firstOrNull?.rawValue;
     if (barcode != null && barcode.isNotEmpty) {
+      if (_lastScannedProduct == "Scanning...") return;
+
       setState(() {
         _showSuccessNotification = true;
-        _lastScannedProduct = "Scanned Product";
-        _lastScannedPrice = "\$0.00";
+        _lastScannedProduct = "Scanning...";
+        _lastScannedPrice = "";
+        _lastScannedImage = null;
       });
 
-      // Call callback
-      widget.onBarcodeScanned?.call(barcode);
+      try {
+        final productData = await ApiService.getProductByBarcode(barcode);
+        final product = Product.fromJson(productData);
 
-      // Hide notification after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
           setState(() {
-            _showSuccessNotification = false;
+            _lastScannedProduct = product.name;
+            _lastScannedPrice = "\$${product.price.toStringAsFixed(2)}";
+            _lastScannedImage = product.imageUrl;
+
+            // Update local cart state
+            _currentCartTotal += product.price;
+            _currentItemCount += 1;
+          });
+
+          // Call callback for checkout logic
+          widget.onBarcodeScanned?.call(barcode);
+
+          // Hide notification after 3 seconds
+          Future.delayed(const Duration(seconds: 3), () {
+            if (mounted && _lastScannedProduct == product.name) {
+              setState(() {
+                _showSuccessNotification = false;
+              });
+            }
           });
         }
-      });
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _lastScannedProduct = "Product not found";
+            _lastScannedPrice = barcode;
+            _lastScannedImage = null;
+          });
+
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) setState(() => _showSuccessNotification = false);
+          });
+        }
+      }
     }
   }
 
@@ -99,16 +138,10 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
       body: Stack(
         children: [
           // 1. Camera Feed Background
-          MobileScanner(
-            controller: cameraController,
-            onDetect: _handleBarcode,
-          ),
+          MobileScanner(controller: cameraController, onDetect: _handleBarcode),
 
           // 2. Dark Overlay with Cutout
-          CustomPaint(
-            painter: ScannerOverlayPainter(),
-            child: Container(),
-          ),
+          CustomPaint(painter: ScannerOverlayPainter(), child: Container()),
 
           // 3. Scanning Frame with Corner Brackets and Laser
           Center(
@@ -234,9 +267,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
               left: BorderSide(color: primaryColor, width: thickness),
               top: BorderSide(color: primaryColor, width: thickness),
             ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(32),
-            ),
+            borderRadius: const BorderRadius.only(topLeft: Radius.circular(32)),
           ),
         ),
       ),
@@ -297,7 +328,10 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
     ];
   }
 
-  Widget _buildGlassButton({required IconData icon, required VoidCallback onTap}) {
+  Widget _buildGlassButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -306,20 +340,13 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.25),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.1),
-            width: 1,
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(22),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 24,
-            ),
+            child: Icon(icon, color: Colors.white, size: 24),
           ),
         ),
       ),
@@ -332,10 +359,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.25),
         borderRadius: BorderRadius.circular(50),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(50),
@@ -372,7 +396,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
                     ),
                   ),
                   Text(
-                    '\$${widget.cartTotal.toStringAsFixed(2)}',
+                    '\$${_currentCartTotal.toStringAsFixed(2)}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -388,7 +412,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
                 margin: const EdgeInsets.symmetric(horizontal: 8),
               ),
               Text(
-                '${widget.itemCount} items',
+                '${_currentItemCount} items',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
@@ -410,10 +434,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
       builder: (context, value, child) {
         return Transform.translate(
           offset: Offset(0, -20 * (1 - value)),
-          child: Opacity(
-            opacity: value,
-            child: child,
-          ),
+          child: Opacity(opacity: value, child: child),
         );
       },
       child: Container(
@@ -421,9 +442,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.95),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.2),
-          ),
+          border: Border.all(color: Colors.white.withOpacity(0.2)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -441,15 +460,22 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
               decoration: BoxDecoration(
                 color: Colors.grey[200],
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.grey[300]!,
-                ),
+                border: Border.all(color: Colors.grey[300]!),
               ),
-              child: Icon(
-                Icons.shopping_bag,
-                color: Colors.grey[400],
-                size: 24,
-              ),
+              child: _lastScannedImage != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        _lastScannedImage!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.shopping_bag,
+                          color: Colors.grey[400],
+                          size: 24,
+                        ),
+                      ),
+                    )
+                  : Icon(Icons.shopping_bag, color: Colors.grey[400], size: 24),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -493,10 +519,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
                   const SizedBox(height: 2),
                   Text(
                     _lastScannedPrice ?? '\$0.00',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                 ],
               ),
@@ -519,9 +542,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.2),
         borderRadius: BorderRadius.circular(50),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.05),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(50),
@@ -565,9 +586,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
                   ? Colors.white.withOpacity(0.2)
                   : Colors.black.withOpacity(0.3),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
@@ -616,11 +635,7 @@ class _PremiumScannerScreenState extends State<PremiumScannerScreen>
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.keyboard,
-                        color: Colors.black87,
-                        size: 20,
-                      ),
+                      Icon(Icons.keyboard, color: Colors.black87, size: 20),
                       SizedBox(width: 10),
                       Text(
                         'Enter barcode manually',

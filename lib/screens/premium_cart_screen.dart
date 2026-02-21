@@ -99,7 +99,9 @@ class _PremiumCartScreenState extends State<PremiumCartScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark ? const Color(0xFF0f2321) : const Color(0xFFF5F8F8);
+    final backgroundColor = isDark
+        ? const Color(0xFF0f2321)
+        : const Color(0xFFF5F8F8);
     final surfaceColor = isDark ? const Color(0xFF162d2a) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF0C1D1B);
     final subtextColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
@@ -140,7 +142,10 @@ class _PremiumCartScreenState extends State<PremiumCartScreen>
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
                       itemCount: cart.length,
                       itemBuilder: (context, index) {
                         return _buildCartItem(
@@ -184,11 +189,7 @@ class _PremiumCartScreenState extends State<PremiumCartScreen>
                       : Colors.black.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Icon(
-                  Icons.arrow_back,
-                  color: textColor,
-                  size: 20,
-                ),
+                child: Icon(Icons.arrow_back, color: textColor, size: 20),
               ),
             ),
             // Title
@@ -214,27 +215,7 @@ class _PremiumCartScreenState extends State<PremiumCartScreen>
                 ),
               ],
             ),
-            // More Button
-            GestureDetector(
-              onTap: () {
-                // Show menu options
-              },
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.white.withOpacity(0.1)
-                      : Colors.black.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  Icons.more_vert,
-                  color: textColor,
-                  size: 20,
-                ),
-              ),
-            ),
+            const SizedBox(width: 40),
           ],
         ),
       ),
@@ -270,28 +251,38 @@ class _PremiumCartScreenState extends State<PremiumCartScreen>
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
+              color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.grey.shade200,
+              ),
             ),
+            padding: const EdgeInsets.all(8),
             child: item.product.imageUrl != null
                 ? ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     child: Image.network(
                       item.product.imageUrl!,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.shopping_bag_outlined,
-                          size: 40,
-                          color: subtextColor,
+                        return Center(
+                          child: Icon(
+                            Icons.shopping_bag_outlined,
+                            size: 32,
+                            color: subtextColor.withOpacity(0.5),
+                          ),
                         );
                       },
                     ),
                   )
-                : Icon(
-                    Icons.shopping_bag_outlined,
-                    size: 40,
-                    color: subtextColor,
+                : Center(
+                    child: Icon(
+                      Icons.shopping_bag_outlined,
+                      size: 32,
+                      color: subtextColor.withOpacity(0.5),
+                    ),
                   ),
           ),
           const SizedBox(width: 16),
@@ -349,11 +340,7 @@ class _PremiumCartScreenState extends State<PremiumCartScreen>
                               : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: Icon(
-                          Icons.remove,
-                          size: 18,
-                          color: textColor,
-                        ),
+                        child: Icon(Icons.remove, size: 18, color: textColor),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -442,7 +429,12 @@ class _PremiumCartScreenState extends State<PremiumCartScreen>
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  _buildPriceLine('Subtotal', subtotal, subtextColor, textColor),
+                  _buildPriceLine(
+                    'Subtotal',
+                    subtotal,
+                    subtextColor,
+                    textColor,
+                  ),
                   const SizedBox(height: 12),
                   _buildPriceLine('Tax (5%)', tax, subtextColor, textColor),
                   const SizedBox(height: 8),
@@ -499,10 +491,7 @@ class _PremiumCartScreenState extends State<PremiumCartScreen>
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            color: labelColor,
-          ),
+          style: GoogleFonts.plusJakartaSans(fontSize: 14, color: labelColor),
         ),
         Text(
           '\$${amount.toStringAsFixed(2)}',
@@ -516,24 +505,29 @@ class _PremiumCartScreenState extends State<PremiumCartScreen>
     );
   }
 
-  Widget _buildSwipeToPayButton(bool isDark, Color surfaceColor, Color textColor) {
+  Widget _buildSwipeToPayButton(
+    bool isDark,
+    Color surfaceColor,
+    Color textColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final maxWidth = constraints.maxWidth;
           return GestureDetector(
-            onHorizontalDragUpdate: (details) => _onSwipeUpdate(details, maxWidth),
+            onHorizontalDragUpdate: (details) =>
+                _onSwipeUpdate(details, maxWidth),
             onHorizontalDragEnd: (details) => _onSwipeEnd(details, maxWidth),
             child: Container(
               height: 64,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0f2321) : const Color(0xFFF5F8F8),
+                color: isDark
+                    ? const Color(0xFF0f2321)
+                    : const Color(0xFFF5F8F8),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(
-                  color: isDark
-                      ? Colors.grey.shade800
-                      : Colors.grey.shade100,
+                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
                   width: 1,
                 ),
                 boxShadow: [

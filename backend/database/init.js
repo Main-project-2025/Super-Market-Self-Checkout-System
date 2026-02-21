@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const logger = require('../logger');
 
 const dbPath = process.env.DATABASE_PATH || './database/checkout.db';
 
@@ -105,13 +106,13 @@ async function initDatabase() {
         ('9', 'Whole Wheat Pasta', 1.75, '999999', 'Organic whole wheat pasta 500g', 'Pantry', 40)
       `);
 
-      console.log('✅ Database tables created successfully');
-      console.log('✅ Sample data inserted successfully');
+      logger.info('Database tables created successfully');
+      logger.info('Sample data inserted successfully');
       resolve();
     });
 
     db.on('error', (err) => {
-      console.error('Database error:', err);
+      logger.error('Database error', { error: err.message });
       reject(err);
     });
   });
