@@ -37,7 +37,14 @@ class ApiService {
     _token = prefs.getString('auth_token');
     _userRole = prefs.getString('user_role');
     _userName = prefs.getString('user_name');
-    _baseUrl = prefs.getString('base_url') ?? _defaultBaseUrl;
+    
+    String? storedUrl = prefs.getString('base_url');
+    // Force replace the old hardcoded IP with localhost if it was cached
+    if (storedUrl != null && storedUrl.contains('192.168.58.17')) {
+      storedUrl = _defaultBaseUrl;
+      await prefs.setString('base_url', _defaultBaseUrl);
+    }
+    _baseUrl = storedUrl ?? _defaultBaseUrl;
   }
 
   // Get current user role
