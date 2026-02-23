@@ -84,6 +84,8 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   String qrData = '';
   bool isLoading = true;
+  bool _isFinishing = false;
+  String? _transactionId;
 
   @override
   void initState() {
@@ -137,7 +139,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (transactionResult['success'] == true) {
         final transactionData = transactionResult['data'];
-        return transactionData['qr_code_data'] ?? jsonEncode(transactionData);
+        // Save the transaction ID so we can mark it paid later
+        _transactionId = transactionData['transaction_id'];
+        final qrCodeData = transactionData['qr_code_data'];
+        return qrCodeData is Map
+            ? jsonEncode(qrCodeData)
+            : qrCodeData ?? jsonEncode(transactionData);
       } else {
         throw Exception('Failed to create transaction');
       }
@@ -160,6 +167,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             .toList(),
       };
       return jsonEncode(bill);
+    }
+  }
+
+  Future<void> _onFinishShopping() async {
+    setState(() => _isFinishing = true);
+
+    // Mark the transaction as paid in the database
+    if (_transactionId != null) {
+      try {
+        await ApiService.updateTransactionStatus(
+          transactionId: _transactionId!,
+          status: 'paid',
+        );
+      } catch (e) {
+        // Non-fatal: log but still let the user finish
+        debugPrint('Failed to update transaction status: $e');
+      }
+    }
+
+    widget.onFinish();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => PremiumHomeScreen()),
+        (route) => false,
+      );
     }
   }
 
@@ -210,18 +242,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                icon: Icon(Icons.check_circle_outline),
+                icon: _isFinishing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : const Icon(Icons.check_circle_outline),
                 label: Text(
-                  'Finish Shopping',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  _isFinishing ? 'Processing...' : 'Finish Shopping',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                onPressed: () {
-                  widget.onFinish();
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => PremiumHomeScreen()),
-                    (route) => false,
-                  );
-                },
+                onPressed: _isFinishing ? null : _onFinishShopping,
               ),
             ),
           ],
@@ -566,6 +601,20 @@ class AdminDashboardScreen extends StatelessWidget {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => LowStockAlertsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildAdminFeatureCard(
+                        context,
+                        icon: Icons.trending_up,
+                        title: 'Demand\nForecast',
+                        description: 'Predict product demand & restock needs',
+                        color: Colors.orange,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const DemandForecastScreen(),
                             ),
                           );
                         },
@@ -1573,3 +1622,420 @@ class _LowStockAlertsScreenState extends State<LowStockAlertsScreen> {
     );
   }
 }
+
+// ============== DEMAND FORECAST SCREEN ==============
+class DemandForecastScreen extends StatefulWidget {
+  const DemandForecastScreen({super.key});
+
+  @override
+  State<DemandForecastScreen> createState() => _DemandForecastScreenState();
+}
+
+class _DemandForecastScreenState extends State<DemandForecastScreen> {
+  Map<String, dynamic>? _summary;
+  List<dynamic> _forecasts = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  int _daysHistory = 30;
+  int _forecastDays = 7;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final result = await ApiService.getDemandForecast(
+        daysHistory: _daysHistory,
+        forecastDays: _forecastDays,
+      );
+      if (mounted) {
+        final data = result['data'] as Map<String, dynamic>;
+        setState(() {
+          _summary = data['summary'] as Map<String, dynamic>?;
+          _forecasts = data['forecasts'] as List<dynamic>? ?? [];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Demand Forecast'),
+        backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune),
+            tooltip: 'Change horizon',
+            onPressed: _showSettingsDialog,
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadData,
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.orange))
+          : _errorMessage != null
+              ? _buildError()
+              : _buildContent(),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          const Text('Failed to load forecast',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(_errorMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600])),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return RefreshIndicator(
+      color: Colors.orange,
+      onRefresh: _loadData,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (_summary != null) _buildSummaryCard(),
+          const SizedBox(height: 16),
+          const Text('Per-Product Forecasts',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ..._forecasts.map((f) => _buildProductCard(f as Map<String, dynamic>)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard() {
+    final s = _summary!;
+    final restockCount = s['products_needing_restock'] ?? 0;
+    final totalUnits   = s['total_restock_units'] ?? 0;
+    final totalProds   = s['total_products'] ?? 0;
+
+    return Card(
+      color: Colors.orange.shade50,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.trending_up, color: Colors.orange, size: 28),
+                const SizedBox(width: 8),
+                Text(
+                  'Forecast Summary',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange.shade800),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Based on last $_daysHistory days · Horizon: $_forecastDays days',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _summaryTile('Total Products', '$totalProds', Colors.teal),
+                _summaryTile('Need Restock', '$restockCount', Colors.red),
+                _summaryTile('Units to Order', '$totalUnits', Colors.orange),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryTile(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value,
+            style: TextStyle(
+                fontSize: 28, fontWeight: FontWeight.w800, color: color)),
+        const SizedBox(height: 4),
+        Text(label,
+            style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+      ],
+    );
+  }
+
+  Widget _buildProductCard(Map<String, dynamic> f) {
+    final trend      = f['demand_trend'] as String? ?? 'stable';
+    final restock    = f['restock_needed'] as bool? ?? false;
+    final restockQty = f['restock_quantity'] ?? 0;
+
+    Color trendColor;
+    IconData trendIcon;
+    switch (trend) {
+      case 'rising':
+        trendColor = Colors.green;
+        trendIcon  = Icons.arrow_upward;
+        break;
+      case 'falling':
+        trendColor = Colors.red;
+        trendIcon  = Icons.arrow_downward;
+        break;
+      default:
+        trendColor = Colors.grey;
+        trendIcon  = Icons.remove;
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: restock
+            ? const BorderSide(color: Colors.orange, width: 1.5)
+            : BorderSide.none,
+      ),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(f['product_name'] ?? '',
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text(f['category'] ?? '',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey[500])),
+                    ],
+                  ),
+                ),
+                // Trend badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: trendColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(trendIcon, size: 14, color: trendColor),
+                      const SizedBox(width: 4),
+                      Text(trend,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: trendColor)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Stock & daily rate row
+            Row(
+              children: [
+                _infoChip(
+                    Icons.inventory_2_outlined,
+                    'Stock: ${f['current_stock']}',
+                    restock ? Colors.red : Colors.teal),
+                const SizedBox(width: 8),
+                _infoChip(
+                    Icons.speed_outlined,
+                    '${(f['daily_demand_rate'] as num).toStringAsFixed(2)} units/day',
+                    Colors.blue),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Forecast row
+            Row(
+              children: [
+                _forecastBadge('7d', f['forecast_7d']),
+                const SizedBox(width: 6),
+                _forecastBadge('14d', f['forecast_14d']),
+                const SizedBox(width: 6),
+                _forecastBadge('30d', f['forecast_30d']),
+              ],
+            ),
+            if (restock) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded,
+                        size: 16, color: Colors.orange),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Restock needed: order $restockQty units',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.deepOrange),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _forecastBadge(String horizon, dynamic value) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Text(horizon,
+                style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+            const SizedBox(height: 2),
+            Text(
+              '${(value as num).toStringAsFixed(0)} u',
+              style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showSettingsDialog() async {
+    int tmpHistory  = _daysHistory;
+    int tmpForecast = _forecastDays;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Forecast Settings'),
+        content: StatefulBuilder(
+          builder: (ctx, setS) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('History window (days)'),
+              Slider(
+                value: tmpHistory.toDouble(),
+                min: 7,
+                max: 90,
+                divisions: 11,
+                label: '$tmpHistory days',
+                activeColor: Colors.orange,
+                onChanged: (v) => setS(() => tmpHistory = v.round()),
+              ),
+              Text('$tmpHistory days', style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              const Text('Forecast horizon (days)'),
+              Slider(
+                value: tmpForecast.toDouble(),
+                min: 7,
+                max: 30,
+                divisions: 3,
+                label: '$tmpForecast days',
+                activeColor: Colors.orange,
+                onChanged: (v) => setS(() => tmpForecast = v.round()),
+              ),
+              Text('$tmpForecast days', style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                _daysHistory  = tmpHistory;
+                _forecastDays = tmpForecast;
+              });
+              _loadData();
+            },
+            child: const Text('Apply', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
