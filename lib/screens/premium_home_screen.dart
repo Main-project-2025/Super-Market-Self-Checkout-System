@@ -7,6 +7,7 @@ import 'premium_cart_screen.dart';
 import 'premium_scanner_screen.dart';
 import 'product_list_screen.dart';
 import 'order_history_screen.dart';
+import 'role_selection_screen.dart';
 
 class PremiumHomeScreen extends StatefulWidget {
   const PremiumHomeScreen({super.key});
@@ -213,13 +214,23 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen>
           children: [
             _accountRow(Icons.person_outline, 'Name', userName),
             const SizedBox(height: 12),
-            _accountRow(Icons.badge_outlined, 'Role', ApiService.userRole ?? 'customer'),
+            _accountRow(
+              Icons.badge_outlined,
+              'Role',
+              ApiService.userRole ?? 'customer',
+            ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK', style: TextStyle(color: Color(0xFF009485), fontWeight: FontWeight.w600)),
+            child: const Text(
+              'OK',
+              style: TextStyle(
+                color: Color(0xFF009485),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -235,9 +246,19 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen>
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
             const SizedBox(height: 2),
-            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF0C1D1B))),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF0C1D1B),
+              ),
+            ),
           ],
         ),
       ],
@@ -245,9 +266,9 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen>
   }
 
   void _showOrderHistory() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen()));
   }
 
   void addToCart(Product product) {
@@ -274,53 +295,67 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F8F8),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Main Content
-            Column(
-              children: [
-                // Header
-                _buildHeader(),
-                // Scrollable Content
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      await _fetchRecommendations();
-                      await _fetchHistory();
-                    },
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(bottom: 200),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 24),
-                          // Stats Card
-                          _buildStatsCard(),
-                          const SizedBox(height: 24),
-                          // Recommendations Section
-                          _buildRecommendationsSection(),
-                          const SizedBox(height: 32),
-                          // Buy It Again Section
-                          if (buyItAgainProducts.isNotEmpty) ...[
-                            _buildBuyItAgainSection(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return;
+
+        await ApiService.logout();
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+            (route) => false,
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F8F8),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // Main Content
+              Column(
+                children: [
+                  // Header
+                  _buildHeader(),
+                  // Scrollable Content
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: () async {
+                        await _fetchRecommendations();
+                        await _fetchHistory();
+                      },
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(bottom: 200),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 24),
+                            // Stats Card
+                            _buildStatsCard(),
+                            const SizedBox(height: 24),
+                            // Recommendations Section
+                            _buildRecommendationsSection(),
                             const SizedBox(height: 32),
+                            // Buy It Again Section
+                            if (buyItAgainProducts.isNotEmpty) ...[
+                              _buildBuyItAgainSection(),
+                              const SizedBox(height: 32),
+                            ],
+                            // Empty State / Cart Status
+                            _buildCartStatus(),
                           ],
-                          // Empty State / Cart Status
-                          _buildCartStatus(),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            // Bottom Floating Section
-            _buildBottomSection(),
-          ],
+                ],
+              ),
+              // Bottom Floating Section
+              _buildBottomSection(),
+            ],
+          ),
         ),
       ),
     );
@@ -528,7 +563,9 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen>
           // Profile avatar with dropdown (Account details, Order history)
           PopupMenuButton<String>(
             offset: const Offset(0, 48),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             onSelected: (value) {
               if (value == 'account') _showAccountDetails();
               if (value == 'orders') _showOrderHistory();
@@ -538,9 +575,16 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen>
                 value: 'account',
                 child: Row(
                   children: [
-                    Icon(Icons.person_outline, color: Color(0xFF0C1D1B), size: 22),
+                    Icon(
+                      Icons.person_outline,
+                      color: Color(0xFF0C1D1B),
+                      size: 22,
+                    ),
                     SizedBox(width: 12),
-                    Text('Account details', style: TextStyle(fontWeight: FontWeight.w500)),
+                    Text(
+                      'Account details',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
                   ],
                 ),
               ),
@@ -548,9 +592,16 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen>
                 value: 'orders',
                 child: Row(
                   children: [
-                    Icon(Icons.receipt_long_outlined, color: Color(0xFF0C1D1B), size: 22),
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      color: Color(0xFF0C1D1B),
+                      size: 22,
+                    ),
                     SizedBox(width: 12),
-                    Text('Order history', style: TextStyle(fontWeight: FontWeight.w500)),
+                    Text(
+                      'Order history',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
                   ],
                 ),
               ),
@@ -629,7 +680,11 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen>
                   ],
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.arrow_drop_down, color: Colors.grey.shade600, size: 24),
+                Icon(
+                  Icons.arrow_drop_down,
+                  color: Colors.grey.shade600,
+                  size: 24,
+                ),
               ],
             ),
           ),
@@ -652,7 +707,9 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen>
                 await ApiService.logout();
                 if (mounted) {
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const PremiumLoginScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const PremiumLoginScreen(),
+                    ),
                     (route) => false,
                   );
                 }
@@ -1013,10 +1070,7 @@ class _PremiumHomeScreenState extends State<PremiumHomeScreen>
         const SizedBox(height: 8),
         Text(
           'Recently added • Tap to view full cart',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
         ),
         const SizedBox(height: 16),
         SizedBox(

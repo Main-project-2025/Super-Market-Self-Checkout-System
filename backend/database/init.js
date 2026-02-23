@@ -22,17 +22,19 @@ async function initDatabase() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           email TEXT UNIQUE NOT NULL,
           password TEXT NOT NULL,
-          name TEXT NOT NULL,
+          first_name TEXT,
+          last_name TEXT,
+          name TEXT,
           role TEXT DEFAULT 'customer',
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      
-      // Add role column if it doesn't exist (migration)
-      db.run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'customer'`, (err) => {
-        // Ignore error if column already exists
-      });
+
+      // Add new columns if they don't exist (migration)
+      db.run(`ALTER TABLE users ADD COLUMN first_name TEXT`, (err) => { });
+      db.run(`ALTER TABLE users ADD COLUMN last_name TEXT`, (err) => { });
+      db.run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'customer'`, (err) => { });
 
       // Products table
       db.run(`

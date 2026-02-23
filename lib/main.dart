@@ -8,6 +8,8 @@ import 'models/product_model.dart';
 import 'screens/premium_login_screen.dart';
 import 'screens/premium_home_screen.dart';
 import 'screens/premium_cart_screen.dart';
+import 'screens/staff_management_screen.dart';
+import 'screens/role_selection_screen.dart';
 import 'data/mock_data.dart';
 
 // CartItem model
@@ -36,7 +38,8 @@ class SelfCheckoutApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: const PremiumLoginScreen(), // Using the premium login screen
+      home: const RoleSelectionScreen(),
+      routes: {'/login': (context) => const PremiumLoginScreen()},
       debugShowCheckedModeBanner: false,
     );
   }
@@ -205,7 +208,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   // Navigate first so we don't call onFinish on a disposed widget (e.g. when coming from Cart).
                   // New dashboard has empty cart; purchase is already logged via createTransaction.
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const PremiumHomeScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const PremiumHomeScreen(),
+                    ),
                     (route) => false,
                   );
                 },
@@ -438,158 +443,188 @@ class AdminDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-        backgroundColor: Colors.teal,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ApiService.logout();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => PremiumLoginScreen()),
-                (route) => false,
-              );
-            },
-            tooltip: 'Logout',
-          ),
-        ],
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.teal, Colors.tealAccent],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Welcome Card
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        if (didPop) return;
+
+        await ApiService.logout();
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const RoleSelectionScreen()),
+            (route) => false,
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Admin Dashboard'),
+          backgroundColor: Colors.teal,
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () async {
+                await ApiService.logout();
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (_) => const RoleSelectionScreen(),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
+                  (route) => false,
+                );
+              },
+              tooltip: 'Logout',
+            ),
+          ],
+        ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.teal, Colors.tealAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Welcome Card
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.admin_panel_settings,
+                              size: 40,
+                              color: Colors.teal,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Admin Dashboard',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Manage and analyze customer data',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Admin Features Grid
+                  Expanded(
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.teal.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.admin_panel_settings,
-                            size: 40,
-                            color: Colors.teal,
-                          ),
+                        _buildAdminFeatureCard(
+                          context,
+                          icon: Icons.analytics,
+                          title: 'Customer\nSegmentation',
+                          description: 'Analyze customer purchase patterns',
+                          color: Colors.green,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => CustomerSegmentationScreen(),
+                              ),
+                            );
+                          },
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Admin Dashboard',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        // Placeholder for future admin features
+                        _buildAdminFeatureCard(
+                          context,
+                          icon: Icons.notifications_active,
+                          title: 'Low Stock\nAlerts',
+                          description: 'Predictive inventory warnings',
+                          color: Colors.redAccent,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => LowStockAlertsScreen(),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Manage and analyze customer data',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
+                            );
+                          },
+                        ),
+                        _buildAdminFeatureCard(
+                          context,
+                          icon: Icons.people,
+                          title: 'Customer\nManagement',
+                          description: 'Manage customer accounts (Coming Soon)',
+                          color: Colors.blue,
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('This feature is coming soon!'),
                               ),
-                            ],
-                          ),
+                            );
+                          },
+                        ),
+                        _buildAdminFeatureCard(
+                          context,
+                          icon: Icons.inventory,
+                          title: 'Product\nManagement',
+                          description:
+                              'Manage products and inventory (Coming Soon)',
+                          color: Colors.purple,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ProductManagementScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildAdminFeatureCard(
+                          context,
+                          icon: Icons.badge,
+                          title: 'Staff\nManagement',
+                          description: 'Add and manage staff members',
+                          color: Colors.orange,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const StaffManagementScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                // Admin Features Grid
-                Expanded(
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    children: [
-                      _buildAdminFeatureCard(
-                        context,
-                        icon: Icons.analytics,
-                        title: 'Customer\nSegmentation',
-                        description: 'Analyze customer purchase patterns',
-                        color: Colors.green,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => CustomerSegmentationScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      // Placeholder for future admin features
-                      _buildAdminFeatureCard(
-                        context,
-                        icon: Icons.notifications_active,
-                        title: 'Low Stock\nAlerts',
-                        description: 'Predictive inventory warnings',
-                        color: Colors.redAccent,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => LowStockAlertsScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildAdminFeatureCard(
-                        context,
-                        icon: Icons.people,
-                        title: 'Customer\nManagement',
-                        description: 'Manage customer accounts (Coming Soon)',
-                        color: Colors.blue,
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('This feature is coming soon!'),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildAdminFeatureCard(
-                        context,
-                        icon: Icons.inventory,
-                        title: 'Product\nManagement',
-                        description:
-                            'Manage products and inventory (Coming Soon)',
-                        color: Colors.purple,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => ProductManagementScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

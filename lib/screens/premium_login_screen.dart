@@ -4,11 +4,14 @@ import '../services/api_service.dart';
 import '../main.dart';
 import 'premium_home_screen.dart';
 import 'premium_signup_screen.dart';
+import 'staff_home_screen.dart';
+import 'role_selection_screen.dart';
 
 /// Premium Login Screen with modern design aesthetics
 /// Features: Glassmorphism, vibrant gradients, social login, dark mode support
 class PremiumLoginScreen extends StatefulWidget {
-  const PremiumLoginScreen({super.key});
+  final String role;
+  const PremiumLoginScreen({super.key, this.role = 'customer'});
 
   @override
   State<PremiumLoginScreen> createState() => _PremiumLoginScreenState();
@@ -83,9 +86,19 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
 
   void _navigateBasedOnRole() {
     // Navigate to appropriate screen based on user role
-    if (ApiService.isAdmin) {
+    final role = ApiService.userRole;
+    if (role == 'admin') {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+      );
+    } else if (role == 'staff') {
+      // For staff, we'll navigate to a Staff Dashboard or similar.
+      // Since no staff screen was requested yet, we'll go to Home for now or a snackbar.
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) =>
+              const StaffHomeScreen(), // I will create this or use a placeholder
+        ),
       );
     } else {
       Navigator.of(
@@ -103,10 +116,17 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
     setState(() => _isLoading = true);
 
     try {
-      await ApiService.login(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      if (widget.role == 'staff') {
+        await ApiService.staffLogin(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+      } else {
+        await ApiService.login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+      }
 
       if (mounted) {
         _showSnackBar('Login successful!');
@@ -179,6 +199,36 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
                   child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            // Back Button
+            Positioned(
+              top: 20,
+              left: 16,
+              child: SafeArea(
+                child: IconButton(
+                  onPressed: () {
+                    if (Navigator.of(context).canPop()) {
+                      Navigator.of(context).pop();
+                    } else {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => const RoleSelectionScreen(),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  tooltip: 'Back to Role Selection',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
+                    padding: const EdgeInsets.all(12),
+                  ),
                 ),
               ),
             ),
@@ -260,7 +310,11 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 const SizedBox(height: 24),
                 // Welcome Text
                 Text(
-                  'Welcome',
+                  widget.role == 'customer'
+                      ? 'Welcome'
+                      : (widget.role == 'admin'
+                            ? 'Admin Login'
+                            : 'Staff Login'),
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
@@ -309,22 +363,23 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                   isPassword: true,
                 ),
                 // Forgot Password
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      _showSnackBar('Forgot password coming soon!');
-                    },
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF009485),
+                if (widget.role == 'customer')
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        _showSnackBar('Forgot password coming soon!');
+                      },
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF009485),
+                        ),
                       ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 8),
                 // Login Button
                 _buildLoginButton(),
@@ -351,28 +406,39 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  "Don't have an account? ",
-                  style: TextStyle(fontSize: 13, color: subtitleColor),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    // Navigate to sign up screen
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PremiumSignupScreen(),
+                if (widget.role == 'customer') ...[
+                  Text(
+                    "Don't have an account? ",
+                    style: TextStyle(fontSize: 13, color: subtitleColor),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // Navigate to sign up screen
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const PremiumSignupScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Sign Up',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF009485),
                       ),
-                    );
-                  },
-                  child: const Text(
-                    'Sign Up',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF009485),
                     ),
                   ),
-                ),
+                ],
+                if (widget.role != 'customer')
+                  Text(
+                    "Secure login for authorized personnel",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: subtitleColor,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
               ],
             ),
           ),

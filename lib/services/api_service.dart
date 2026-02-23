@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/mock_data.dart';
 import '../models/product_model.dart';
+import '../models/staff_model.dart';
 
 class ApiService {
   // Default backend URL
@@ -141,6 +142,35 @@ class ApiService {
     return result;
   }
 
+  static Future<Map<String, dynamic>> staffLogin({
+    required String email,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: _getHeaders(),
+      body: json.encode({'email': email, 'password': password}),
+    );
+
+    final result = _handleResponse(response);
+
+    // Ensure the user actually has the staff role
+    if (result['user']?['role'] != 'staff' &&
+        result['user']?['role'] != 'admin') {
+      await clearToken();
+      throw Exception('Access denied: Unauthorized role');
+    }
+
+    if (result['token'] != null) {
+      await saveToken(
+        result['token'],
+        role: result['user']?['role'],
+        name: result['user']?['name'],
+      );
+    }
+    return result;
+  }
+
   static Future<Map<String, dynamic>> verifyToken() async {
     final response = await http.get(
       Uri.parse('$baseUrl/auth/verify'),
@@ -263,16 +293,21 @@ class ApiService {
     return _handleResponse(response);
   }
 
-  static Future<Map<String, dynamic>> verifyQrCode(
-    Map<String, dynamic> qrData,
-  ) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/transactions/verify-qr'),
-      headers: _getHeaders(),
-      body: json.encode({'qr_data': qrData}),
-    );
+  static Future<Map<String, dynamic>> verifyQrCode(dynamic qrData) async {
+    await Future.delayed(const Duration(milliseconds: 1000));
 
-    return _handleResponse(response);
+    try {
+      if (qrData is String) {
+        final decoded = json.decode(qrData);
+        return {'success': true, 'data': decoded};
+      }
+      return {'success': true, 'data': qrData};
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Invalid QR format. Could not parse bill data.',
+      };
+    }
   }
 
   // Health check
@@ -336,7 +371,9 @@ class ApiService {
     try {
       final query = <String>['limit=$limit'];
       if (currentItems != null && currentItems.isNotEmpty) {
-        query.add('current_items=${Uri.encodeComponent(currentItems.join(','))}');
+        query.add(
+          'current_items=${Uri.encodeComponent(currentItems.join(','))}',
+        );
       }
       final url = '$baseUrl/analytics/recommendations?${query.join('&')}';
 
@@ -375,6 +412,47 @@ class ApiService {
   static Future<Map<String, dynamic>> applyPricingSuggestion(String id) async {
     final response = await http.post(
       Uri.parse('$baseUrl/products/$id/apply-pricing'),
+      headers: _getHeaders(),
+    );
+
+    return _handleResponse(response);
+  }
+
+  // Staff Management APIs
+  static Future<List<Staff>> getStaff() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/auth/staff'),
+      headers: _getHeaders(),
+    );
+
+    final result = _handleResponse(response);
+    final List<dynamic> data = result['data'] ?? [];
+    return data.map((s) => Staff.fromJson(s)).toList();
+  }
+
+  static Future<Map<String, dynamic>> addStaff({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/staff'),
+      headers: _getHeaders(),
+      body: json.encode({
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': email,
+        'password': password,
+      }),
+    );
+
+    return _handleResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> deleteStaff(String id) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/auth/staff/$id'),
       headers: _getHeaders(),
     );
 
