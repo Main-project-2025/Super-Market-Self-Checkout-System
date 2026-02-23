@@ -1,7 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 require('dotenv').config({ path: './config.env' });
+
+const logger = require('./logger');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -14,6 +17,9 @@ const { initDatabase } = require('./database/init');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// HTTP request logging (piped into Winston → docker logs / files)
+app.use(morgan('combined', { stream: logger.stream }));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -48,7 +54,7 @@ app.get('/api/health', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  logger.error('Unhandled error', { error: err.message, stack: err.stack });
   res.status(500).json({
     error: 'Something went wrong!',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
@@ -64,16 +70,17 @@ app.use('*', (req, res) => {
 async function startServer() {
   try {
     await initDatabase();
-    console.log('✅ Database initialized successfully');
+    logger.info('Database initialized successfully');
 
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📱 API Base URL: http://0.0.0.0:${PORT}/api`);
-      console.log(`🔍 Health Check: http://0.0.0.0:${PORT}/api/health`);
-      console.log(`🌐 Access from network: http://<YOUR_IP>:${PORT}/api`);
+      logger.info('Server running', {
+        port: PORT,
+        apiBase: `http://0.0.0.0:${PORT}/api`,
+        health: `http://0.0.0.0:${PORT}/api/health`
+      });
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.error('Failed to start server', { error: error.message, stack: error.stack });
     process.exit(1);
   }
 }

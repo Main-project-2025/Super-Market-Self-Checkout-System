@@ -5,13 +5,7 @@
 # Instead of long 'docker run' commands, we define everything here
 # Then just run: docker-compose up
 # =============================================================================
-
-# -----------------------------------------------------------------------------
-# VERSION: Compose file format version
-# -----------------------------------------------------------------------------
-# Version 3.8 supports all modern features
-# Different versions have different features - 3.8 is stable and well-supported
-version: '3.8'
+# Note: 'version' is obsolete in Compose V2+ and is omitted to avoid warnings.
 
 # -----------------------------------------------------------------------------
 # SERVICES: Define the containers we want to run
@@ -48,9 +42,16 @@ services:
     # This means database changes persist even if container is deleted!
     volumes:
       - ./database:/app/database
-      # You can add more volumes here:
-      # - ./logs:/app/logs          # Persist logs
+      - ./logs:/app/logs              # Persist log files (combined.log, error.log)
       # - ./uploads:/app/uploads    # Persist uploaded files
+    
+    # LOGGING: Docker logging driver + app log framework
+    # json-file with limits prevents unbounded disk use; app uses Winston (see logger.js)
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     
     # ENVIRONMENT VARIABLES
     # Override values from config.env or add new ones
@@ -58,6 +59,10 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      # Logging (Docker / aggregation friendly)
+      - LOG_FORMAT=json              # JSON to stdout for docker logs / ELK
+      - LOG_LEVEL=info               # debug | info | warn | error
+      - LOG_TO_FILES=true            # also write to ./logs when volume mounted
       # Add more as needed:
       # - JWT_SECRET=${JWT_SECRET}  # Read from .env file
       # - DATABASE_PATH=/app/database/checkout.db
