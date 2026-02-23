@@ -380,4 +380,14 @@ class ApiService {
 
     return _handleResponse(response);
   }
+
+  static Future<Map<String, dynamic>> getDemandForecast({
+    int daysHistory = 30,
+    int forecastDays = 7,
+  }) async {
+    final url =
+        '$baseUrl/analytics/demand-forecast?days_history=$daysHistory&forecast_days=$forecastDays';
+    final response = await http.get(Uri.parse(url), headers: _getHeaders());
+    return _handleResponse(response);
+  }
 }
