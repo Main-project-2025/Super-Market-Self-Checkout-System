@@ -98,15 +98,9 @@ if (logToFiles && fs.existsSync(LOG_DIR)) {
 
 const logger = createLogger({
     level: logLevel,
+    exitOnError: false,
     defaultMeta: { service: 'supermarket-backend' },
     transports: transportList,
-
-    exceptionHandlers: logToFiles && fs.existsSync(LOG_DIR)
-        ? [new transports.File({ filename: path.join(LOG_DIR, 'exceptions.log') })]
-        : [new transports.Console({ format: fileFormat })],
-    rejectionHandlers: logToFiles && fs.existsSync(LOG_DIR)
-        ? [new transports.File({ filename: path.join(LOG_DIR, 'rejections.log') })]
-        : [new transports.Console({ format: fileFormat })],
 });
 
 // ---------------------------------------------------------------------------

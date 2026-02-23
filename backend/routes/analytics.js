@@ -25,7 +25,7 @@ router.get('/segmentation', authenticateToken, requireAdmin, (req, res) => {
   };
 
   // Execute Python script
-  exec(${PYTHON_BIN} "${scriptPath}"`, { env }, (error, stdout, stderr) => {
+  exec(`${PYTHON_BIN} "${scriptPath}"`, { env }, (error, stdout, stderr) => {
     if (error) {
       console.error('Segmentation error:', error);
       console.error('stderr:', stderr);
@@ -87,7 +87,7 @@ router.get('/marketing-campaign', authenticateToken, requireAdmin, (req, res) =>
   const scriptPath = path.join(__dirname, '..', 'analytics', 'marketing_campaign_analysis.py');
 
   // Execute Python script with CSV path as argument
-  exec(${PYTHON_BIN} "${scriptPath}" "${csvPath}"`, { env: process.env }, (error, stdout, stderr) => {
+  exec(`${PYTHON_BIN} "${scriptPath}" "${csvPath}"`, { env: process.env }, (error, stdout, stderr) => {
     if (error) {
       console.error('Marketing campaign analysis error:', error);
       console.error('stderr:', stderr);
@@ -198,7 +198,7 @@ router.get('/dynamic-pricing', authenticateToken, requireAdmin, async (req, res)
     const scriptPath = path.join(__dirname, '..', 'analytics', 'dynamic_pricing.py');
 
     // Execute Python script with CSV path as argument
-    exec(${PYTHON_BIN} "${scriptPath}" "${csvPath}"`, { env: process.env }, async (error, stdout, stderr) => {
+    exec(`${PYTHON_BIN} "${scriptPath}" "${csvPath}"`, { env: process.env }, async (error, stdout, stderr) => {
       if (error) {
         console.error('Dynamic pricing analysis error:', error);
         console.error('stderr:', stderr);
@@ -317,14 +317,14 @@ router.get('/statistics', authenticateToken, requireAdmin, async (req, res) => {
       db.get(`
         SELECT 
           COUNT(DISTINCT u.id) as total_customers,
-          COUNT(DISTINCT CASE WHEN t.id IS NOT NULL THEN u.id END) as active_customers,
-          COUNT(t.id) as total_transactions,
-          COALESCE(SUM(t.total_amount), 0) as total_revenue,
-          COALESCE(AVG(t.total_amount), 0) as avg_transaction_amount,
-          COALESCE(SUM(CASE WHEN t.status = 'paid' THEN t.total_amount ELSE 0 END), 0) as paid_revenue
+    COUNT(DISTINCT CASE WHEN t.id IS NOT NULL THEN u.id END) as active_customers,
+    COUNT(t.id) as total_transactions,
+    COALESCE(SUM(t.total_amount), 0) as total_revenue,
+    COALESCE(AVG(t.total_amount), 0) as avg_transaction_amount,
+    COALESCE(SUM(CASE WHEN t.status = 'paid' THEN t.total_amount ELSE 0 END), 0) as paid_revenue
         FROM users u
         LEFT JOIN transactions t ON u.id = t.user_id
-      `, (err, row) => {
+    `, (err, row) => {
         if (err) reject(err);
         else resolve(row);
       });
@@ -357,7 +357,7 @@ router.get('/low-stock', authenticateToken, requireAdmin, (req, res) => {
   };
 
   // Execute Python script
-  exec(${PYTHON_BIN} "${scriptPath}"`, { env }, (error, stdout, stderr) => {
+  exec(`${PYTHON_BIN} "${scriptPath}"`, { env }, (error, stdout, stderr) => {
     if (error) {
       console.error('Low stock forecast error:', error);
       console.error('stderr:', stderr);
@@ -473,7 +473,7 @@ router.get('/demand-forecast', authenticateToken, requireAdmin, (req, res) => {
   const forecastDays = parseInt(req.query.forecast_days) || 7;
 
   exec(
-    ${PYTHON_BIN} "${scriptPath}" ${daysHistory} ${forecastDays}`,
+    `${PYTHON_BIN} "${scriptPath}" ${daysHistory} ${forecastDays}`,
     { env },
     (error, stdout, stderr) => {
       if (error) {
