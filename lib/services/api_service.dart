@@ -6,7 +6,7 @@ import '../models/product_model.dart';
 
 class ApiService {
   // Default backend URL
-  static const String _defaultBaseUrl = 'http://192.168.58.17:3000/api';
+  static const String _defaultBaseUrl = 'http://localhost:3000/api';
   static String _baseUrl = _defaultBaseUrl;
   static String? _token;
   static String? _userRole;
