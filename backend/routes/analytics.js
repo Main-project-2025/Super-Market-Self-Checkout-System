@@ -9,8 +9,8 @@ const { applyPriceUpdates } = require('../scripts/apply_price_updates');
 
 const router = express.Router();
 
-// Use the analytics venv python which has all required packages (pandas, sklearn, etc.)
-const PYTHON_BIN = path.join(__dirname, '..', 'analytics', 'venv', 'bin', 'python3');
+// Use global python inside Docker which has all required packages
+const PYTHON_BIN = 'python3';
 
 // Customer segmentation endpoint (Admin only)
 router.get('/segmentation', authenticateToken, requireAdmin, (req, res) => {
