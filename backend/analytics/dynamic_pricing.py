@@ -7,8 +7,9 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.impute import SimpleImputer
 from sklearn.compose import make_column_transformer
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import make_pipeline, Pipeline
 from sklearn.metrics import mean_squared_error, r2_score
 import os
 import sys
@@ -168,15 +169,23 @@ def main():
             sys.exit(1)
         
         # Automatically identify remaining numerical and categorical columns
-        cat_cols = X.select_dtypes(include=['object']).columns.tolist()
-        num_cols = X.select_dtypes(exclude=['object']).columns.tolist()
+        cat_cols = X.select_dtypes(include=['object', 'str']).columns.tolist()
+        num_cols = X.select_dtypes(exclude=['object', 'str']).columns.tolist()
         
-        # Create a robust preprocessing pipeline
+        # Create a robust preprocessing pipeline with imputers to handle NaN values
         transformers = []
         if num_cols:
-            transformers.append((StandardScaler(), num_cols))
+            num_pipeline = Pipeline([
+                ('imputer', SimpleImputer(strategy='median')),
+                ('scaler', StandardScaler())
+            ])
+            transformers.append((num_pipeline, num_cols))
         if cat_cols:
-            transformers.append((OneHotEncoder(handle_unknown='ignore', drop='first'), cat_cols))
+            cat_pipeline = Pipeline([
+                ('imputer', SimpleImputer(strategy='most_frequent')),
+                ('encoder', OneHotEncoder(handle_unknown='ignore', drop='first'))
+            ])
+            transformers.append((cat_pipeline, cat_cols))
         
         if not transformers:
             error_result = {

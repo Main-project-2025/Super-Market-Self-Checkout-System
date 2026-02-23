@@ -9,6 +9,9 @@ const { applyPriceUpdates } = require('../scripts/apply_price_updates');
 
 const router = express.Router();
 
+// Use the analytics venv python which has all required packages (pandas, sklearn, etc.)
+const PYTHON_BIN = path.join(__dirname, '..', 'analytics', 'venv', 'bin', 'python3');
+
 // Customer segmentation endpoint (Admin only)
 router.get('/segmentation', authenticateToken, requireAdmin, (req, res) => {
   // Get Python script path
@@ -22,7 +25,7 @@ router.get('/segmentation', authenticateToken, requireAdmin, (req, res) => {
   };
 
   // Execute Python script
-  exec(`python3 "${scriptPath}"`, { env }, (error, stdout, stderr) => {
+  exec(${PYTHON_BIN} "${scriptPath}"`, { env }, (error, stdout, stderr) => {
     if (error) {
       console.error('Segmentation error:', error);
       console.error('stderr:', stderr);
@@ -84,7 +87,7 @@ router.get('/marketing-campaign', authenticateToken, requireAdmin, (req, res) =>
   const scriptPath = path.join(__dirname, '..', 'analytics', 'marketing_campaign_analysis.py');
 
   // Execute Python script with CSV path as argument
-  exec(`python3 "${scriptPath}" "${csvPath}"`, { env: process.env }, (error, stdout, stderr) => {
+  exec(${PYTHON_BIN} "${scriptPath}" "${csvPath}"`, { env: process.env }, (error, stdout, stderr) => {
     if (error) {
       console.error('Marketing campaign analysis error:', error);
       console.error('stderr:', stderr);
@@ -195,7 +198,7 @@ router.get('/dynamic-pricing', authenticateToken, requireAdmin, async (req, res)
     const scriptPath = path.join(__dirname, '..', 'analytics', 'dynamic_pricing.py');
 
     // Execute Python script with CSV path as argument
-    exec(`python3 "${scriptPath}" "${csvPath}"`, { env: process.env }, async (error, stdout, stderr) => {
+    exec(${PYTHON_BIN} "${scriptPath}" "${csvPath}"`, { env: process.env }, async (error, stdout, stderr) => {
       if (error) {
         console.error('Dynamic pricing analysis error:', error);
         console.error('stderr:', stderr);
@@ -354,7 +357,7 @@ router.get('/low-stock', authenticateToken, requireAdmin, (req, res) => {
   };
 
   // Execute Python script
-  exec(`python3 "${scriptPath}"`, { env }, (error, stdout, stderr) => {
+  exec(${PYTHON_BIN} "${scriptPath}"`, { env }, (error, stdout, stderr) => {
     if (error) {
       console.error('Low stock forecast error:', error);
       console.error('stderr:', stderr);
@@ -409,7 +412,7 @@ router.get('/recommendations', authenticateToken, (req, res) => {
   const currentItems = req.query.current_items || '';
 
   // Execute Python script
-  let command = `python3 "${scriptPath}" --user_id "${userId}"`;
+  let command = ${PYTHON_BIN} "${scriptPath}" --user_id "${userId}"`;
   if (currentItems) {
     command += ` --current_items "${currentItems}"`;
   }
@@ -453,5 +456,48 @@ router.get('/recommendations', authenticateToken, (req, res) => {
   });
 });
 
+// Demand forecasting endpoint (Admin only)
+router.get('/demand-forecast', authenticateToken, requireAdmin, (req, res) => {
+  const scriptPath = path.join(__dirname, '..', 'analytics', 'demand_forecasting.py');
+
+  const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '..', 'database', 'checkout.db');
+  const env = { ...process.env, DATABASE_PATH: dbPath };
+
+  const daysHistory = parseInt(req.query.days_history) || 30;
+  const forecastDays = parseInt(req.query.forecast_days) || 7;
+
+  exec(
+    ${PYTHON_BIN} "${scriptPath}" ${daysHistory} ${forecastDays}`,
+    { env },
+    (error, stdout, stderr) => {
+      if (error) {
+        console.error('Demand forecast error:', error);
+        console.error('stderr:', stderr);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to run demand forecasting',
+          details: stderr || error.message
+        });
+      }
+
+      try {
+        const result = JSON.parse(stdout);
+        if (!result.success) {
+          return res.status(500).json({ success: false, error: result.error });
+        }
+        res.json({ success: true, data: result });
+      } catch (parseError) {
+        console.error('JSON parse error:', parseError);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to parse forecast results',
+          details: stdout
+        });
+      }
+    }
+  );
+});
+
 module.exports = router;
+
 
