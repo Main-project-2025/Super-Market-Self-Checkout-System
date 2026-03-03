@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../main.dart';
 import 'premium_home_screen.dart';
 import 'premium_signup_screen.dart';
+import 'staff_dashboard_screen.dart';
 
 /// Premium Login Screen with modern design aesthetics
 /// Features: Glassmorphism, vibrant gradients, social login, dark mode support
@@ -86,6 +87,10 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
     if (ApiService.isAdmin) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+      );
+    } else if (ApiService.userRole == 'staff') {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const StaffDashboardScreen()),
       );
     } else {
       Navigator.of(

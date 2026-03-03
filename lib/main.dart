@@ -8,6 +8,7 @@ import 'models/product_model.dart';
 import 'screens/premium_login_screen.dart';
 import 'screens/premium_home_screen.dart';
 import 'screens/premium_cart_screen.dart';
+import 'screens/role_selection_screen.dart';
 import 'data/mock_data.dart';
 
 // CartItem model
@@ -36,7 +37,7 @@ class SelfCheckoutApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
-      home: const PremiumLoginScreen(), // Using the premium login screen
+      home: const RoleSelectionScreen(), // Role selection is the entry point
       debugShowCheckedModeBanner: false,
     );
   }

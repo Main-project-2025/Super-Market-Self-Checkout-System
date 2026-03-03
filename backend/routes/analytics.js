@@ -161,44 +161,31 @@ router.get('/export-transactions', authenticateToken, requireAdmin, async (req, 
 // Dynamic pricing prediction endpoint (Admin only)
 router.get('/dynamic-pricing', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    // Check if we should use database transactions or a provided CSV
-    const useDatabase = req.query.use_database === 'true' || req.query.use_database === '1';
+    const useDatabase = req.query.use_database !== 'false'; // default to DB
     let csvPath = req.query.path || req.query.csv_path;
-
-    // If using database, export transactions first
-    if (useDatabase && !csvPath) {
-      const exportPath = path.join(__dirname, '..', 'analytics', 'transactions_export.csv');
-      try {
-        await exportTransactionsToCSV(exportPath);
-        csvPath = exportPath;
-      } catch (exportError) {
-        return res.status(500).json({
-          success: false,
-          error: 'Failed to export transactions from database',
-          details: exportError.message
-        });
-      }
-    }
-
-    // Use default CSV file if no path provided
-    if (!csvPath) {
-      csvPath = path.join(__dirname, '..', 'analytics', 'so.csv');
-    }
-
-    // Validate file path exists and is readable
-    if (!fs.existsSync(csvPath)) {
-      return res.status(404).json({
-        success: false,
-        error: 'CSV file not found',
-        path: csvPath
-      });
-    }
+    const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '..', 'database', 'checkout.db');
 
     // Get Python script path
     const scriptPath = path.join(__dirname, '..', 'analytics', 'dynamic_pricing.py');
 
-    // Execute Python script with CSV path as argument
-    exec(`${PYTHON_BIN} "${scriptPath}" "${csvPath}"`, { env: process.env }, async (error, stdout, stderr) => {
+    let command;
+
+    if (csvPath && fs.existsSync(csvPath)) {
+      // Explicit CSV provided and exists — use it via the positional arg
+      command = `${PYTHON_BIN} "${scriptPath}" "${csvPath}"`;
+    } else if (useDatabase && fs.existsSync(dbPath)) {
+      // No CSV (or not found) — use the live database
+      command = `${PYTHON_BIN} "${scriptPath}" --use-db --db-path "${dbPath}"`;
+    } else {
+      return res.status(404).json({
+        success: false,
+        error: 'No data source found. Database not found and no CSV path provided.',
+        db_path: dbPath,
+        csv_path: csvPath || null
+      });
+    }
+
+    exec(command, { env: process.env }, async (error, stdout, stderr) => {
       if (error) {
         console.error('Dynamic pricing analysis error:', error);
         console.error('stderr:', stderr);
@@ -210,7 +197,6 @@ router.get('/dynamic-pricing', authenticateToken, requireAdmin, async (req, res)
       }
 
       try {
-        // Parse JSON output from Python script
         const result = JSON.parse(stdout);
 
         if (!result.success) {
@@ -235,7 +221,6 @@ router.get('/dynamic-pricing', authenticateToken, requireAdmin, async (req, res)
             });
           } catch (updateError) {
             console.error('Price update error:', updateError);
-            // Continue to return analysis results even if update fails
             priceUpdateResult = {
               success: false,
               error: updateError.message
@@ -269,6 +254,7 @@ router.get('/dynamic-pricing', authenticateToken, requireAdmin, async (req, res)
     });
   }
 });
+
 
 // Apply price updates from dynamic pricing results (Admin only)
 router.post('/dynamic-pricing/apply', authenticateToken, requireAdmin, async (req, res) => {

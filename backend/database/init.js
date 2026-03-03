@@ -28,7 +28,7 @@ async function initDatabase() {
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      
+
       // Add role column if it doesn't exist (migration)
       db.run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'customer'`, (err) => {
         // Ignore error if column already exists
@@ -90,6 +90,7 @@ async function initDatabase() {
       db.run(`
         INSERT OR IGNORE INTO users (email, password, name, role) VALUES 
         ('admin@checkout.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin User', 'admin'),
+        ('staff@checkout.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Staff Member', 'staff'),
         ('test@checkout.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Test User', 'customer')
       `);
 
