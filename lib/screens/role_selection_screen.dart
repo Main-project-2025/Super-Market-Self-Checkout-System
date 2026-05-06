@@ -36,71 +36,74 @@ class RoleSelectionScreen extends StatelessWidget {
               ),
             ),
             SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 80),
-                    // Icon
-                    Container(
-                      padding: const EdgeInsets.all(28),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.4),
-                          width: 2,
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 80),
+                      // Icon
+                      Container(
+                        padding: const EdgeInsets.all(28),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.shopping_basket_outlined,
+                          color: Colors.white,
+                          size: 52,
                         ),
                       ),
-                      child: const Icon(
-                        Icons.shopping_basket_outlined,
-                        color: Colors.white,
-                        size: 52,
+                      const SizedBox(height: 28),
+                      // Title
+                      const Text(
+                        'Self-Checkout System',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 28),
-                    // Title
-                    const Text(
-                      'Self-Checkout System',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
+                      const SizedBox(height: 10),
+                      Text(
+                        'Choose your role to continue',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Choose your role to continue',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w400,
+                      const SizedBox(height: 56),
+                      // Role cards
+                      _RoleCard(
+                        icon: Icons.person_outline,
+                        title: 'Customer',
+                        subtitle: 'Shop and checkout by yourself',
+                        onTap: () => _goToLogin(context, 'customer'),
                       ),
-                    ),
-                    const SizedBox(height: 56),
-                    // Role cards
-                    _RoleCard(
-                      icon: Icons.person_outline,
-                      title: 'Customer',
-                      subtitle: 'Shop and checkout by yourself',
-                      onTap: () => _goToLogin(context),
-                    ),
-                    const SizedBox(height: 16),
-                    _RoleCard(
-                      icon: Icons.badge_outlined,
-                      title: 'Staff Member',
-                      subtitle: 'Assist customers and manage orders',
-                      onTap: () => _goToLogin(context),
-                    ),
-                    const SizedBox(height: 16),
-                    _RoleCard(
-                      icon: Icons.manage_accounts_outlined,
-                      title: 'Administrator',
-                      subtitle: 'Manage inventory and staff',
-                      onTap: () => _goToLogin(context),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      _RoleCard(
+                        icon: Icons.badge_outlined,
+                        title: 'Staff Member',
+                        subtitle: 'Assist customers and manage orders',
+                        onTap: () => _goToLogin(context, 'staff'),
+                      ),
+                      const SizedBox(height: 16),
+                      _RoleCard(
+                        icon: Icons.manage_accounts_outlined,
+                        title: 'Administrator',
+                        subtitle: 'Manage inventory and staff',
+                        onTap: () => _goToLogin(context, 'admin'),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -110,9 +113,9 @@ class RoleSelectionScreen extends StatelessWidget {
     );
   }
 
-  void _goToLogin(BuildContext context) {
+  void _goToLogin(BuildContext context, String role) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PremiumLoginScreen()),
+      MaterialPageRoute(builder: (_) => PremiumLoginScreen(role: role)),
     );
   }
 }

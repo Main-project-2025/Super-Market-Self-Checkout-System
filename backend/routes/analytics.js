@@ -490,6 +490,136 @@ router.get('/demand-forecast', authenticateToken, requireAdmin, (req, res) => {
   );
 });
 
+// Customer list endpoint (Admin only)
+router.get('/customers', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { getDatabase } = require('../database/init');
+    const db = getDatabase();
+
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+    const search = req.query.search || '';
+
+    let query = `
+      SELECT 
+        u.id, 
+        u.name, 
+        u.email, 
+        u.role, 
+        u.created_at,
+        COUNT(t.id) as transaction_count,
+        COALESCE(SUM(t.total_amount), 0) as total_spend
+      FROM users u
+      LEFT JOIN transactions t ON u.id = t.user_id AND t.status = 'paid'
+    `;
+    let countQuery = `SELECT COUNT(*) as total FROM users u`;
+    const params = [];
+    const countParams = [];
+
+    if (search) {
+      const searchPattern = `%${search}%`;
+      query += ` WHERE u.name LIKE ? OR u.email LIKE ?`;
+      countQuery += ` WHERE u.name LIKE ? OR u.email LIKE ?`;
+      params.push(searchPattern, searchPattern);
+      countParams.push(searchPattern, searchPattern);
+    }
+
+    query += `
+      GROUP BY u.id
+      ORDER BY u.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+    params.push(limit, offset);
+
+    // Get total count
+    const totalResult = await new Promise((resolve, reject) => {
+      db.get(countQuery, countParams, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    // Get users
+    const users = await new Promise((resolve, reject) => {
+      db.all(query, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    res.json({
+      success: true,
+      data: users,
+      pagination: {
+        total: totalResult.total,
+        limit,
+        offset
+      }
+    });
+
+  } catch (error) {
+    console.error('Fetch customers error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch customers' });
+  }
+});
+
+// Customer detail endpoint (Admin only)
+router.get('/customers/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { getDatabase } = require('../database/init');
+    const db = getDatabase();
+    const userId = req.params.id;
+
+    // Get user details
+    const user = await new Promise((resolve, reject) => {
+      db.get(`
+        SELECT id, name, email, role, created_at
+        FROM users 
+        WHERE id = ?
+      `, [userId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Customer not found' });
+    }
+
+    // Get user's transactions
+    const transactions = await new Promise((resolve, reject) => {
+      db.all(`
+        SELECT id, total_amount, status, payment_method, created_at
+        FROM transactions
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+      `, [userId], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    // Calculate totals
+    const totalSpend = transactions
+      .filter(t => t.status === 'paid')
+      .reduce((sum, t) => sum + t.total_amount, 0);
+
+    res.json({
+      success: true,
+      data: {
+        ...user,
+        transaction_count: transactions.length,
+        total_spend: totalSpend,
+        transactions
+      }
+    });
+
+  } catch (error) {
+    console.error('Fetch customer detail error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch customer details' });
+  }
+});
+
 module.exports = router;
 
 

@@ -293,6 +293,28 @@ class ApiService {
   }
 
   // Analytics APIs
+  static Future<Map<String, dynamic>> getCustomers({
+    int limit = 20,
+    int offset = 0,
+    String search = '',
+  }) async {
+    String url = '$baseUrl/analytics/customers?limit=$limit&offset=$offset';
+    if (search.isNotEmpty) {
+      url += '&search=${Uri.encodeComponent(search)}';
+    }
+
+    final response = await http.get(Uri.parse(url), headers: _getHeaders());
+    return _handleResponse(response);
+  }
+
+  static Future<Map<String, dynamic>> getCustomerDetail(String id) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/analytics/customers/$id'),
+      headers: _getHeaders(),
+    );
+    return _handleResponse(response);
+  }
+
   static Future<Map<String, dynamic>> getCustomerSegmentation() async {
     final response = await http.get(
       Uri.parse('$baseUrl/analytics/segmentation'),

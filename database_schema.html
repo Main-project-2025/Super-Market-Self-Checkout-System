@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema ER Diagram</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 2rem;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+        .footer {
+            margin-top: 3rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Super-Market Self-Checkout - Database Schema</h1>
+        
+        <div class="mermaid">
+erDiagram
+    users {
+        INTEGER id PK "AUTOINCREMENT"
+        TEXT email "UNIQUE NOT NULL"
+        TEXT password "NOT NULL"
+        TEXT name "NOT NULL"
+        TEXT role "DEFAULT 'customer'"
+        DATETIME created_at "DEFAULT CURRENT_TIMESTAMP"
+        DATETIME updated_at "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    products {
+        TEXT id PK
+        TEXT name "NOT NULL"
+        REAL price "NOT NULL"
+        TEXT barcode "UNIQUE NOT NULL"
+        TEXT description
+        TEXT category
+        INTEGER stock_quantity "DEFAULT 0"
+        TEXT image_url
+        BOOLEAN is_active "DEFAULT 1"
+        DATETIME created_at "DEFAULT CURRENT_TIMESTAMP"
+        DATETIME updated_at "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    transactions {
+        TEXT id PK
+        INTEGER user_id FK "NOT NULL"
+        REAL total_amount "NOT NULL"
+        TEXT status "DEFAULT 'pending'"
+        TEXT payment_method
+        TEXT qr_code_data
+        DATETIME created_at "DEFAULT CURRENT_TIMESTAMP"
+        DATETIME updated_at "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    transaction_items {
+        INTEGER id PK "AUTOINCREMENT"
+        TEXT transaction_id FK "NOT NULL"
+        TEXT product_id FK "NOT NULL"
+        INTEGER quantity "NOT NULL"
+        REAL unit_price "NOT NULL"
+        REAL total_price "NOT NULL"
+        DATETIME created_at "DEFAULT CURRENT_TIMESTAMP"
+    }
+
+    users ||--o{ transactions : "places"
+    transactions ||--|{ transaction_items : "contains"
+    products ||--o{ transaction_items : "included in"
+        </div>
+
+        <div class="footer">
+            Generated using Mermaid.js and SQLite Database Schema
+        </div>
+    </div>
+
+    <!-- Import Mermaid via CDN -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            er: {
+                layoutDirection: 'TB',
+                minEntityWidth: 100,
+                minEntityHeight: 75,
+                entityPadding: 15,
+                stroke: 'gray',
+                fill: 'honeydew',
+                fontSize: 12,
+                useMaxWidth: true,
+            }
+        });
+    </script>
+</body>
+</html>

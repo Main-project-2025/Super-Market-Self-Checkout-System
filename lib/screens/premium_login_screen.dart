@@ -8,8 +8,11 @@ import 'staff_dashboard_screen.dart';
 
 /// Premium Login Screen with modern design aesthetics
 /// Features: Glassmorphism, vibrant gradients, social login, dark mode support
+/// Features: Glassmorphism, vibrant gradients, social login, dark mode support
 class PremiumLoginScreen extends StatefulWidget {
-  const PremiumLoginScreen({super.key});
+  final String role;
+
+  const PremiumLoginScreen({super.key, this.role = 'customer'});
 
   @override
   State<PremiumLoginScreen> createState() => _PremiumLoginScreenState();
@@ -189,17 +192,40 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
             ),
             // Main content
             SafeArea(
-              child: Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildLoginCard(),
+              child: Stack(
+                children: [
+                  Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: SlideTransition(
+                          position: _slideAnimation,
+                          child: _buildLoginCard(),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -265,7 +291,11 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 const SizedBox(height: 24),
                 // Welcome Text
                 Text(
-                  'Welcome',
+                  widget.role == 'admin' 
+                      ? 'Admin Login' 
+                      : widget.role == 'staff' 
+                          ? 'Staff Login' 
+                          : 'Welcome',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
@@ -313,24 +343,27 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                   labelColor: subtitleColor,
                   isPassword: true,
                 ),
-                // Forgot Password
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      _showSnackBar('Forgot password coming soon!');
-                    },
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF009485),
+                // Forgot Password (Only for customers)
+                if (widget.role == 'customer')
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        _showSnackBar('Forgot password coming soon!');
+                      },
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF009485),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 8),
+                  )
+                else
+                  const SizedBox(height: 24),
+                if (widget.role == 'customer') const SizedBox(height: 8),
                 // Login Button
                 _buildLoginButton(),
               ],
@@ -339,6 +372,7 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
           // Footer
           Container(
             padding: const EdgeInsets.all(16),
+            width: double.infinity,
             decoration: BoxDecoration(
               color: _isDarkMode
                   ? const Color(0xFF122321).withValues(alpha: 0.5)
@@ -353,33 +387,44 @@ class _PremiumLoginScreenState extends State<PremiumLoginScreen>
                 ),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "Don't have an account? ",
-                  style: TextStyle(fontSize: 13, color: subtitleColor),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    // Navigate to sign up screen
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PremiumSignupScreen(),
+            child: widget.role == 'customer' 
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Don't have an account? ",
+                        style: TextStyle(fontSize: 13, color: subtitleColor),
                       ),
-                    );
-                  },
-                  child: const Text(
-                    'Sign Up',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF009485),
+                      GestureDetector(
+                        onTap: () {
+                          // Navigate to sign up screen
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const PremiumSignupScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF009485),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Center(
+                    child: Text(
+                      'Secure login for authorized personnel',
+                      style: TextStyle(
+                        fontSize: 13, 
+                        fontStyle: FontStyle.italic,
+                        color: subtitleColor,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
           ),
         ],
       ),

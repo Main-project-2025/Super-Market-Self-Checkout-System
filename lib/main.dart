@@ -9,6 +9,7 @@ import 'screens/premium_login_screen.dart';
 import 'screens/premium_home_screen.dart';
 import 'screens/premium_cart_screen.dart';
 import 'screens/role_selection_screen.dart';
+import 'screens/customer_management_screen.dart';
 import 'data/mock_data.dart';
 
 // CartItem model
@@ -610,12 +611,12 @@ class AdminDashboardScreen extends StatelessWidget {
                         context,
                         icon: Icons.people,
                         title: 'Customer\nManagement',
-                        description: 'Manage customer accounts (Coming Soon)',
+                        description: 'Manage and analyze customer accounts',
                         color: Colors.blue,
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('This feature is coming soon!'),
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const CustomerManagementScreen(),
                             ),
                           );
                         },
